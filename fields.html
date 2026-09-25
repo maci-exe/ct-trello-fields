@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>CT Fields</title>
+
+    <link
+        rel="stylesheet"
+        href="https://p.trellocdn.com/power-up.min.css"
+    >
+
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 8px 4px;
+            background: transparent;
+        }
+
+
+        #ctFields {
+            width: 100%;
+        }
+
+
+        .fields-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, minmax(0, 1fr));
+
+            gap: 14px 12px;
+        }
+
+
+        .field {
+            min-width: 0;
+        }
+
+
+        .field label {
+
+            display: block;
+
+            font-weight: 600;
+
+            margin-bottom: 6px;
+        }
+
+
+        select,
+        input {
+
+            width: 100%;
+
+            min-height: 38px;
+
+            padding: 7px 10px;
+
+            border-radius: 4px;
+
+            border: 1px solid rgba(128,128,128,0.35);
+
+            font-size: 14px;
+        }
+
+
+        select:disabled,
+        input:disabled {
+            opacity: 0.85;
+            cursor: default;
+        }
+
+
+        #status {
+
+            margin-top: 12px;
+
+            font-size: 12px;
+
+            opacity: 0.7;
+        }
+
+
+        @media (max-width: 650px) {
+
+            .fields-grid {
+                grid-template-columns:
+                    repeat(2, minmax(0, 1fr));
+            }
+
+        }
+
+
+        @media (max-width: 430px) {
+
+            .fields-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div id="ctFields">
+
+    <div class="fields-grid">
+
+
+        <!-- UNTEREINHEIT -->
+
+        <div class="field">
+
+            <label for="unit">
+                Untereinheit
+            </label>
+
+            <select id="unit">
+
+                <option value="">
+                    -- Keine Untereinheit --
+                </option>
+
+                <option value="Muunilinst 10">
+                    Muunilinst 10
+                </option>
+
+                <option value="Rancor Battalion">
+                    Rancor Battalion
+                </option>
+
+                <option value="Tactical Combat Instructor">
+                    Tactical Combat Instructor
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <!-- RANG -->
+
+        <div class="field">
+
+            <label for="rank">
+                Rang
+            </label>
+
+            <select id="rank">
+
+                <option value="">
+                    -- Kein Rang --
+                </option>
+
+                <option value="Private First Class">
+                    Private First Class
+                </option>
+
+                <option value="Lance Corporal">
+                    Lance Corporal
+                </option>
+
+                <option value="Corporal">
+                    Corporal
+                </option>
+
+                <option value="Sergeant">
+                    Sergeant
+                </option>
+
+                <option value="Staff Sergeant">
+                    Staff Sergeant
+                </option>
+
+                <option value="Sergeant Major">
+                    Sergeant Major
+                </option>
+
+                <option value="Lieutenant">
+                    Lieutenant
+                </option>
+
+                <option value="First Lieutenant">
+                    First Lieutenant
+                </option>
+
+                <option value="Captain">
+                    Captain
+                </option>
+
+                <option value="Major">
+                    Major
+                </option>
+
+                <option value="Commander">
+                    Commander
+                </option>
+
+                <option value="High General">
+                    High General
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <!-- POSITION -->
+
+        <div class="field">
+
+            <label for="position">
+                Position
+            </label>
+
+            <select id="position">
+
+                <option value="">
+                    -- Keine Position --
+                </option>
+
+                <option value="Mannschaft">
+                    Mannschaft
+                </option>
+
+                <option value="Unteroffizierebene">
+                    Unteroffizierebene
+                </option>
+
+                <option value="Führungsebene">
+                    Führungsebene
+                </option>
+
+                <option value="Hohe Führungsebene">
+                    Hohe Führungsebene
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <!-- ADJUTANT -->
+
+        <div class="field">
+
+            <label for="adjutant">
+                Adjutant
+            </label>
+
+            <select id="adjutant">
+
+                <option value="">
+                    -- Kein Adjutant --
+                </option>
+
+                <option value="5th">
+                    5th
+                </option>
+
+                <option value="41st">
+                    41st
+                </option>
+
+                <option value="104th">
+                    104th
+                </option>
+
+                <option value="187th">
+                    187th
+                </option>
+
+                <option value="212th">
+                    212th
+                </option>
+
+                <option value="501st">
+                    501st
+                </option>
+
+                <option value="CTP">
+                    CTP
+                </option>
+
+                <option value="GMC">
+                    GMC
+                </option>
+
+                <option value="RMC">
+                    RMC
+                </option>
+
+                <option value="SO">
+                    SO
+                </option>
+
+                <option value="ST">
+                    ST
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <!-- LETZTE BEFÖRDERUNG -->
+
+        <div class="field">
+
+            <label for="promotion">
+                Letzte Beförderung
+            </label>
+
+            <input
+                type="date"
+                id="promotion"
+            >
+
+        </div>
+
+
+        <!-- TESTZEIT -->
+
+        <div class="field">
+
+            <label for="testUntil">
+                Testzeit
+            </label>
+
+            <input
+                type="date"
+                id="testUntil"
+            >
+
+        </div>
+
+
+        <!-- ID -->
+
+        <div class="field">
+
+            <label for="ctId">
+                ID
+            </label>
+
+            <input
+                type="text"
+                id="ctId"
+                placeholder="z.B. CT-5590"
+            >
+
+        </div>
+
+
+    </div>
+
+
+    <div id="status"></div>
+
+</div>
+
+
+<script src="./fields.js"></script>
+
+
+</body>
+
+</html>
