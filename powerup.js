@@ -2,7 +2,7 @@ window.TrelloPowerUp.initialize({
 
 
     // =========================
-    // BOARD EINSTELLUNGEN
+    // BOARD SETTINGS BUTTON
     // =========================
 
     'board-buttons': function (t) {
@@ -14,10 +14,17 @@ window.TrelloPowerUp.initialize({
             callback: function (t) {
 
                 return t.modal({
-                    title: 'CT Fields – Einstellungen',
-                    url: t.signUrl('./settings.html'),
-                    height: 720,
+
+                    title:
+                        'CT Fields – Einstellungen',
+
+                    url:
+                        t.signUrl('./settings.html'),
+
+                    height: 750,
+
                     fullscreen: false
+
                 });
 
             }
@@ -27,28 +34,36 @@ window.TrelloPowerUp.initialize({
 
 
     // =========================
-    // FELDER AUF KARTENRÜCKSEITE
+    // FELDER DIREKT IN DER KARTE
     // =========================
 
     'card-back-section': function (t) {
 
         return {
+
             title: 'CT Fields',
 
-            icon: t.signUrl('./icon.svg'),
+            icon:
+                t.signUrl('./icon.svg'),
 
             content: {
+
                 type: 'iframe',
-                url: t.signUrl('./fields.html'),
-                height: 330
+
+                url:
+                    t.signUrl('./fields.html'),
+
+                height: 350
+
             }
+
         };
 
     },
 
 
     // =========================
-    // BADGES AUF KARTENVORDERSEITE
+    // KARTENVORDERSEITE
     // =========================
 
     'card-badges': function (t) {
@@ -56,105 +71,86 @@ window.TrelloPowerUp.initialize({
         return Promise.all([
 
             t.get(
+                'board',
+                'shared',
+                'ctSchema',
+                null
+            ),
+
+            t.get(
                 'card',
                 'shared',
                 'characterData',
                 {}
-            ),
-
-            t.get(
-                'board',
-                'shared',
-                'ctConfig',
-                null
             )
 
         ]).then(function (values) {
 
-            var data =
-                values[0] || {};
+            var schema =
+                ctDecodeSchema(
+                    values[0]
+                );
 
-            var config =
-                ctNormalizeConfig(values[1]);
+
+            var data =
+                values[1] || {};
+
+
+            var storedValues =
+                getStoredValues(data);
+
 
             var badges = [];
 
 
-            addChoiceBadge(
-                badges,
-                config,
-                'units',
-                data.unit,
-                'Untereinheit'
+            schema.fields.forEach(
+                function (field) {
+
+                    var value =
+                        storedValues[field.id];
+
+
+                    if (!value) {
+                        return;
+                    }
+
+
+                    var displayValue =
+                        ctGetDisplayValue(
+                            field,
+                            value
+                        );
+
+
+                    if (
+                        field.type === 'date'
+                    ) {
+
+                        displayValue =
+                            formatDate(
+                                displayValue
+                            );
+
+                    }
+
+
+                    badges.push({
+
+                        text:
+                            field.label +
+                            ': ' +
+                            displayValue,
+
+                        color:
+                            ctGetValueColor(
+                                field,
+                                value
+                            )
+
+                    });
+
+                }
             );
-
-
-            addChoiceBadge(
-                badges,
-                config,
-                'ranks',
-                data.rank,
-                '🏅 Rang'
-            );
-
-
-            addChoiceBadge(
-                badges,
-                config,
-                'positions',
-                data.position,
-                'Position'
-            );
-
-
-            addChoiceBadge(
-                badges,
-                config,
-                'adjutants',
-                data.adjutant,
-                'Adjutant'
-            );
-
-
-            if (data.promotion) {
-
-                badges.push({
-                    text:
-                        'Letzte Beförderung: ' +
-                        formatDate(data.promotion),
-
-                    color:
-                        config.fixedColors.promotion
-                });
-
-            }
-
-
-            if (data.testUntil) {
-
-                badges.push({
-                    text:
-                        'Testzeit: ' +
-                        formatDate(data.testUntil),
-
-                    color:
-                        config.fixedColors.testUntil
-                });
-
-            }
-
-
-            if (data.ctId) {
-
-                badges.push({
-                    text:
-                        'ID: ' + data.ctId,
-
-                    color:
-                        config.fixedColors.ctId
-                });
-
-            }
 
 
             return badges;
@@ -167,48 +163,24 @@ window.TrelloPowerUp.initialize({
 
 
 // =========================
-// AUSWAHL-BADGE
+// ALTE + NEUE KARTENDATEN
 // =========================
 
-function addChoiceBadge(
-    badges,
-    config,
-    section,
-    storedValue,
-    title
-) {
+function getStoredValues(data) {
 
-    if (!storedValue) {
-        return;
+    if (
+        data &&
+        data.v === 2 &&
+        data.values
+    ) {
+
+        return data.values;
+
     }
 
-    var item =
-        ctFindItem(
-            config,
-            section,
-            storedValue
-        );
 
-
-    // Falls später einmal eine Option
-    // gelöscht wird, bleibt der alte Wert
-    // wenigstens sichtbar.
-
-    var label =
-        item
-            ? item.label
-            : storedValue;
-
-    var color =
-        item
-            ? item.color
-            : 'light-gray';
-
-
-    badges.push({
-        text: title + ': ' + label,
-        color: color
-    });
+    // Kompatibilität mit unserem bisherigen Teststand.
+    return data || {};
 
 }
 
@@ -223,12 +195,15 @@ function formatDate(dateString) {
         return '';
     }
 
+
     var parts =
         dateString.split('-');
+
 
     if (parts.length !== 3) {
         return dateString;
     }
+
 
     return (
         parts[2] +
@@ -237,4 +212,5 @@ function formatDate(dateString) {
         '.' +
         parts[0]
     );
+
 }
