@@ -14,8 +14,8 @@ window.TrelloPowerUp.initialize({
             content: {
                 type: 'iframe',
                 url: t.signUrl('./fields.html'),
-                height: 390
-            }
+                height: 330
+                    }
         };
     },
 
