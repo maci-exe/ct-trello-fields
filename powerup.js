@@ -1,24 +1,77 @@
 window.TrelloPowerUp.initialize({
 
-    // Rang auf der Vorderseite der Karte anzeigen
-    'card-badges': function (t, opts) {
+    'card-badges': function (t) {
 
-        return t.get('card', 'shared', 'rank', '')
-            .then(function (rank) {
+        return Promise.all([
+            t.get('card', 'shared', 'characterData', {}),
+            t.get('card', 'shared', 'rank', '')
+        ]).then(function (values) {
 
-                if (!rank) {
-                    return [];
-                }
+            var data = values[0] || {};
+            var oldRank = values[1];
 
-                return [{
-                    text: 'Rang: ' + rank,
+            // Übergang von unserer alten Testversion
+            if (!data.rank && oldRank) {
+                data.rank = oldRank;
+            }
+
+            var badges = [];
+
+            if (data.unit) {
+                badges.push({
+                    text: 'Untereinheit: ' + data.unit,
+                    color: 'light-gray'
+                });
+            }
+
+            if (data.rank) {
+                badges.push({
+                    text: 'Rang: ' + data.rank,
                     color: 'green'
-                }];
-            });
+                });
+            }
+
+            if (data.position) {
+                badges.push({
+                    text: 'Position: ' + data.position,
+                    color: 'light-gray'
+                });
+            }
+
+            if (data.adjutant) {
+                badges.push({
+                    text: 'Adjutant: ' + data.adjutant,
+                    color: 'light-gray'
+                });
+            }
+
+            if (data.promotion) {
+                badges.push({
+                    text: 'Letzte Beförderung: ' + formatDate(data.promotion),
+                    color: 'light-gray'
+                });
+            }
+
+            if (data.testUntil) {
+                badges.push({
+                    text: 'Testzeit: ' + formatDate(data.testUntil),
+                    color: 'light-gray'
+                });
+            }
+
+            if (data.ctId) {
+                badges.push({
+                    text: 'ID: ' + data.ctId,
+                    color: 'light-gray'
+                });
+            }
+
+            return badges;
+        });
     },
 
-    // Bearbeiten-Button auf der geöffneten Karte
-    'card-buttons': function (t, opts) {
+
+    'card-buttons': function () {
 
         return [{
             icon: './icon.svg',
@@ -26,14 +79,32 @@ window.TrelloPowerUp.initialize({
             condition: 'edit',
 
             callback: function (t) {
-                return t.popup({
+
+                return t.modal({
                     title: 'CT-Daten bearbeiten',
                     url: './edit.html',
                     height: 650,
                     fullscreen: false
                 });
+
             }
         }];
     }
 
 });
+
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+        return '';
+    }
+
+    var parts = dateString.split('-');
+
+    if (parts.length !== 3) {
+        return dateString;
+    }
+
+    return parts[2] + '.' + parts[1] + '.' + parts[0];
+}
