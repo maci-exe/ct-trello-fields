@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>CT Fields Einstellungen</title>
+
+    <link
+        rel="stylesheet"
+        href="https://p.trellocdn.com/power-up.min.css"
+    >
+
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            padding: 20px;
+            margin: 0;
+        }
+
+        h2 {
+            margin-top: 26px;
+            margin-bottom: 10px;
+        }
+
+        h2:first-child {
+            margin-top: 0;
+        }
+
+        .description {
+            opacity: 0.7;
+            margin-bottom: 18px;
+        }
+
+        .config-row {
+
+            display: grid;
+
+            grid-template-columns:
+                minmax(180px, 1fr)
+                150px
+                110px;
+
+            gap: 8px;
+
+            align-items: center;
+
+            margin-bottom: 7px;
+        }
+
+        .config-row input,
+        .config-row select {
+            margin: 0;
+            width: 100%;
+        }
+
+        .row-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .row-buttons button {
+            margin: 0;
+            padding: 6px 8px;
+        }
+
+        .add-button {
+            margin-top: 5px;
+        }
+
+        .fixed-row {
+
+            display: grid;
+
+            grid-template-columns:
+                minmax(180px, 1fr)
+                150px;
+
+            gap: 8px;
+
+            align-items: center;
+
+            margin-bottom: 8px;
+        }
+
+        .bottom-actions {
+
+            position: sticky;
+
+            bottom: 0;
+
+            margin-top: 28px;
+
+            padding-top: 14px;
+            padding-bottom: 4px;
+
+            background: inherit;
+
+            display: flex;
+
+            gap: 10px;
+        }
+
+        .bottom-actions button {
+            flex: 1;
+        }
+
+        #status {
+            margin-top: 12px;
+            min-height: 18px;
+            font-size: 13px;
+        }
+
+        .error {
+            color: #ef5c48;
+        }
+
+        .success {
+            color: #4bce97;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<p class="description">
+    Diese Einstellungen gelten für das gesamte Board.
+</p>
+
+
+<div id="settings"></div>
+
+
+<h2>Feste Feldfarben</h2>
+
+<div id="fixedColors"></div>
+
+
+<div class="bottom-actions">
+
+    <button
+        type="button"
+        id="defaultsButton"
+    >
+        Standardwerte laden
+    </button>
+
+    <button
+        type="button"
+        class="mod-primary"
+        id="saveButton"
+    >
+        Einstellungen speichern
+    </button>
+
+</div>
+
+
+<div id="status"></div>
+
+
+<script src="./config.js"></script>
+<script src="./settings.js"></script>
+
+
+</body>
+
+</html>
