@@ -1,7 +1,33 @@
 window.TrelloPowerUp.initialize({
 
+
     // =========================
-    // FELDER DIREKT IN DER KARTE
+    // BOARD EINSTELLUNGEN
+    // =========================
+
+    'board-buttons': function (t) {
+
+        return [{
+            text: 'CT Fields',
+            condition: 'admin',
+
+            callback: function (t) {
+
+                return t.modal({
+                    title: 'CT Fields – Einstellungen',
+                    url: t.signUrl('./settings.html'),
+                    height: 720,
+                    fullscreen: false
+                });
+
+            }
+        }];
+
+    },
+
+
+    // =========================
+    // FELDER AUF KARTENRÜCKSEITE
     // =========================
 
     'card-back-section': function (t) {
@@ -15,8 +41,9 @@ window.TrelloPowerUp.initialize({
                 type: 'iframe',
                 url: t.signUrl('./fields.html'),
                 height: 330
-                    }
+            }
         };
+
     },
 
 
@@ -26,169 +53,163 @@ window.TrelloPowerUp.initialize({
 
     'card-badges': function (t) {
 
-        return t.get(
-            'card',
-            'shared',
-            'characterData',
-            {}
-        ).then(function (data) {
+        return Promise.all([
 
-            data = data || {};
+            t.get(
+                'card',
+                'shared',
+                'characterData',
+                {}
+            ),
+
+            t.get(
+                'board',
+                'shared',
+                'ctConfig',
+                null
+            )
+
+        ]).then(function (values) {
+
+            var data =
+                values[0] || {};
+
+            var config =
+                ctNormalizeConfig(values[1]);
 
             var badges = [];
 
 
-            if (data.unit) {
-                badges.push({
-                    text: 'Untereinheit: ' + data.unit,
-                    color: getUnitColor(data.unit)
-                });
-            }
+            addChoiceBadge(
+                badges,
+                config,
+                'units',
+                data.unit,
+                'Untereinheit'
+            );
 
 
-            if (data.rank) {
-                badges.push({
-                    text: 'Rang: ' + data.rank,
-                    color: getRankColor(data.rank)
-                });
-            }
+            addChoiceBadge(
+                badges,
+                config,
+                'ranks',
+                data.rank,
+                '🏅 Rang'
+            );
 
 
-            if (data.position) {
-                badges.push({
-                    text: 'Position: ' + data.position,
-                    color: getPositionColor(data.position)
-                });
-            }
+            addChoiceBadge(
+                badges,
+                config,
+                'positions',
+                data.position,
+                'Position'
+            );
 
 
-            if (data.adjutant) {
-                badges.push({
-                    text: 'Adjutant: ' + data.adjutant,
-                    color: getAdjutantColor(data.adjutant)
-                });
-            }
+            addChoiceBadge(
+                badges,
+                config,
+                'adjutants',
+                data.adjutant,
+                'Adjutant'
+            );
 
 
             if (data.promotion) {
+
                 badges.push({
-                    text: 'Letzte Beförderung: ' + formatDate(data.promotion),
-                    color: 'red'
+                    text:
+                        'Letzte Beförderung: ' +
+                        formatDate(data.promotion),
+
+                    color:
+                        config.fixedColors.promotion
                 });
+
             }
 
 
             if (data.testUntil) {
+
                 badges.push({
-                    text: 'Testzeit: ' + formatDate(data.testUntil),
-                    color: 'yellow'
+                    text:
+                        'Testzeit: ' +
+                        formatDate(data.testUntil),
+
+                    color:
+                        config.fixedColors.testUntil
                 });
+
             }
 
 
             if (data.ctId) {
+
                 badges.push({
-                    text: 'ID: ' + data.ctId,
-                    color: 'light-gray'
+                    text:
+                        'ID: ' + data.ctId,
+
+                    color:
+                        config.fixedColors.ctId
                 });
+
             }
 
 
             return badges;
+
         });
+
     }
 
 });
 
 
 // =========================
-// RANGFARBEN
+// AUSWAHL-BADGE
 // =========================
 
-function getRankColor(rank) {
+function addChoiceBadge(
+    badges,
+    config,
+    section,
+    storedValue,
+    title
+) {
 
-    var colors = {
+    if (!storedValue) {
+        return;
+    }
 
-        'Private First Class': 'light-gray',
-
-        'Lance Corporal': 'purple',
-        'Corporal': 'purple',
-
-        'Sergeant': 'green',
-        'Staff Sergeant': 'green',
-        'Sergeant Major': 'green',
-
-        'Lieutenant': 'blue',
-        'First Lieutenant': 'blue',
-
-        'Captain': 'red',
-        'Major': 'orange',
-        'Commander': 'yellow',
-        'High General': 'purple'
-    };
-
-    return colors[rank] || 'light-gray';
-}
+    var item =
+        ctFindItem(
+            config,
+            section,
+            storedValue
+        );
 
 
-// =========================
-// POSITIONSFARBEN
-// =========================
+    // Falls später einmal eine Option
+    // gelöscht wird, bleibt der alte Wert
+    // wenigstens sichtbar.
 
-function getPositionColor(position) {
+    var label =
+        item
+            ? item.label
+            : storedValue;
 
-    var colors = {
-
-        'Mannschaft': 'purple',
-        'Unteroffizierebene': 'green',
-        'Führungsebene': 'blue',
-        'Hohe Führungsebene': 'red'
-    };
-
-    return colors[position] || 'light-gray';
-}
+    var color =
+        item
+            ? item.color
+            : 'light-gray';
 
 
-// =========================
-// UNTEREINHEITEN
-// =========================
+    badges.push({
+        text: title + ': ' + label,
+        color: color
+    });
 
-function getUnitColor(unit) {
-
-    var colors = {
-
-        'Rancor Battalion': 'red',
-        'Tactical Combat Instructor': 'green',
-        'Muunilinst 10': 'blue'
-    };
-
-    return colors[unit] || 'light-gray';
-}
-
-
-// =========================
-// ADJUTANTEN
-// =========================
-
-function getAdjutantColor(adjutant) {
-
-    var colors = {
-
-        '5th': 'sky',
-        '41st': 'green',
-        '104th': 'light-gray',
-        '187th': 'purple',
-        '212th': 'orange',
-        '501st': 'blue',
-
-        'CTP': 'lime',
-        'GMC': 'purple',
-        'RMC': 'red',
-        'SO': 'sky',
-        'ST': 'red'
-    };
-
-    return colors[adjutant] || 'light-gray';
 }
 
 
@@ -202,11 +223,18 @@ function formatDate(dateString) {
         return '';
     }
 
-    var parts = dateString.split('-');
+    var parts =
+        dateString.split('-');
 
     if (parts.length !== 3) {
         return dateString;
     }
 
-    return parts[2] + '.' + parts[1] + '.' + parts[0];
+    return (
+        parts[2] +
+        '.' +
+        parts[1] +
+        '.' +
+        parts[0]
+    );
 }
