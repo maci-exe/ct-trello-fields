@@ -29,7 +29,8 @@ window.TrelloPowerUp.initialize({
                 return t.popup({
                     title: 'CT-Daten bearbeiten',
                     url: './edit.html',
-                    height: 180
+                    height: 650,
+                    fullscreen: false
                 });
             }
         }];
