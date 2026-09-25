@@ -17,6 +17,8 @@ var canWrite = false;
 
 var loaded = false;
 
+var statusTimer = null;
+
 
 // =========================
 // KARTENDATEN AUSLESEN
@@ -38,7 +40,7 @@ function extractValues(data) {
     }
 
 
-    // Alte Testdaten übernehmen.
+    // Kompatibilität mit alten Testdaten
     return Object.assign(
         {},
         data || {}
@@ -69,21 +71,49 @@ function setControlColor(
     ];
 
 
-    colors.forEach(
-        function (item) {
+    colors.forEach(function (item) {
 
-            control.classList.remove(
-                'color-' + item
-            );
+        control.classList.remove(
+            'color-' + item
+        );
 
-        }
-    );
+    });
 
 
     control.classList.add(
         'color-' +
         (color || 'light-gray')
     );
+
+}
+
+
+// =========================
+// STATUS
+// =========================
+
+function setStatus(text, resetAfter) {
+
+    clearTimeout(statusTimer);
+
+    status.textContent = text;
+
+
+    if (resetAfter) {
+
+        statusTimer = setTimeout(
+            function () {
+
+                status.textContent =
+                    canWrite
+                        ? 'Änderungen werden automatisch gespeichert.'
+                        : 'Nur-Lese-Ansicht';
+
+            },
+            resetAfter
+        );
+
+    }
 
 }
 
@@ -102,29 +132,36 @@ function saveData() {
     }
 
 
-    status.textContent =
-        'Speichere...';
+    setStatus('Speichere...');
 
 
     return t.set(
-
         'card',
-
         'shared',
-
         'characterData',
-
         {
             v: 2,
             values: storedValues
         }
 
-    ).catch(function (error) {
+    ).then(function () {
 
-        console.error(error);
+        setStatus(
+            'Gespeichert ✓',
+            1200
+        );
 
-        status.textContent =
-            'Fehler beim Speichern';
+    }).catch(function (error) {
+
+        console.error(
+            'CT Fields Card Save Error:',
+            error
+        );
+
+        setStatus(
+            'Fehler beim Speichern',
+            2500
+        );
 
     });
 
@@ -167,7 +204,9 @@ function createSelect(
             element.textContent =
                 option.label;
 
-            select.appendChild(element);
+            select.appendChild(
+                element
+            );
 
         }
     );
@@ -180,11 +219,11 @@ function createSelect(
         );
 
 
-    // Falls alter Wert existiert,
-    // aber die Option inzwischen gelöscht wurde.
+    // Falls eine Option inzwischen gelöscht wurde,
+    // bleibt ein alter Kartenwert trotzdem sichtbar.
     if (
         normalized &&
-        !field.options.some(
+        !(field.options || []).some(
             function (option) {
                 return option.id === normalized;
             }
@@ -200,7 +239,9 @@ function createSelect(
         legacy.textContent =
             normalized + ' (Altwert)';
 
-        select.appendChild(legacy);
+        select.appendChild(
+            legacy
+        );
 
     }
 
@@ -210,7 +251,6 @@ function createSelect(
 
 
     setControlColor(
-
         select,
 
         select.value
@@ -219,7 +259,6 @@ function createSelect(
                 select.value
             )
             : 'light-gray'
-
     );
 
 
@@ -232,7 +271,6 @@ function createSelect(
 
 
             setControlColor(
-
                 select,
 
                 select.value
@@ -241,7 +279,6 @@ function createSelect(
                         select.value
                     )
                     : 'light-gray'
-
             );
 
 
@@ -280,13 +317,11 @@ function createInput(
 
 
     setControlColor(
-
         input,
 
         input.value
             ? field.color
             : 'light-gray'
-
     );
 
 
@@ -295,13 +330,11 @@ function createInput(
         function () {
 
             setControlColor(
-
                 input,
 
                 input.value
                     ? field.color
                     : 'light-gray'
-
             );
 
         }
@@ -315,7 +348,6 @@ function createInput(
             storedValues[field.id] =
                 input.value.trim();
 
-
             saveData();
 
         }
@@ -328,9 +360,7 @@ function createInput(
             'keydown',
             function (event) {
 
-                if (
-                    event.key === 'Enter'
-                ) {
+                if (event.key === 'Enter') {
 
                     event.preventDefault();
 
@@ -368,6 +398,9 @@ function renderField(field) {
     label.textContent =
         field.label;
 
+    label.title =
+        field.label;
+
 
     var currentValue =
         storedValues[field.id] || '';
@@ -376,9 +409,7 @@ function renderField(field) {
     var control;
 
 
-    if (
-        field.type === 'select'
-    ) {
+    if (field.type === 'select') {
 
         control =
             createSelect(
@@ -406,7 +437,9 @@ function renderField(field) {
     wrapper.appendChild(control);
 
 
-    fieldsGrid.appendChild(wrapper);
+    fieldsGrid.appendChild(
+        wrapper
+    );
 
 }
 
@@ -477,6 +510,17 @@ t.render(function () {
         return t.sizeTo(
             '#ctFields'
         );
+
+    }).catch(function (error) {
+
+        console.error(
+            'CT Fields Load Error:',
+            error
+        );
+
+
+        status.textContent =
+            'CT Fields konnten nicht geladen werden.';
 
     });
 
