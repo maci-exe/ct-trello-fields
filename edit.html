@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet"
+          href="https://p.trellocdn.com/power-up.min.css">
+
+    <style>
+        body {
+            padding: 10px;
+        }
+
+        select {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        button {
+            width: 100%;
+        }
+    </style>
+
+    <script src="https://p.trellocdn.com/power-up.min.js"></script>
+</head>
+
+<body>
+
+<form id="ctForm">
+
+    <label for="rank">Rang</label>
+
+    <select id="rank">
+        <option value="">-- Rang auswählen --</option>
+        <option value="Private First Class">Private First Class</option>
+        <option value="Lance Corporal">Lance Corporal</option>
+        <option value="Corporal">Corporal</option>
+        <option value="Sergeant">Sergeant</option>
+        <option value="Staff Sergeant">Staff Sergeant</option>
+        <option value="Sergeant Major">Sergeant Major</option>
+        <option value="Lieutenant">Lieutenant</option>
+        <option value="First Lieutenant">First Lieutenant</option>
+        <option value="Captain">Captain</option>
+    </select>
+
+    <button type="submit" class="mod-primary">
+        Speichern
+    </button>
+
+</form>
+
+<script src="./edit.js"></script>
+
+</body>
+</html>
