@@ -2,72 +2,63 @@ window.TrelloPowerUp.initialize({
 
     'card-badges': function (t) {
 
-        return Promise.all([
-            t.get('card', 'shared', 'characterData', {}),
-            t.get('card', 'shared', 'rank', '')
-        ]).then(function (values) {
+        return t.get('card', 'shared', 'characterData', {})
+            .then(function (data) {
 
-            var data = values[0] || {};
-            var oldRank = values[1];
+                data = data || {};
+                var badges = [];
 
-            // Übergang von unserer alten Testversion
-            if (!data.rank && oldRank) {
-                data.rank = oldRank;
-            }
+                if (data.unit) {
+                    badges.push({
+                        text: 'Untereinheit: ' + data.unit,
+                        color: getUnitColor(data.unit)
+                    });
+                }
 
-            var badges = [];
+                if (data.rank) {
+                    badges.push({
+                        text: 'Rang: ' + data.rank,
+                        color: getRankColor(data.rank)
+                    });
+                }
 
-            if (data.unit) {
-                badges.push({
-                    text: 'Untereinheit: ' + data.unit,
-                    color: 'light-gray'
-                });
-            }
+                if (data.position) {
+                    badges.push({
+                        text: 'Position: ' + data.position,
+                        color: getPositionColor(data.position)
+                    });
+                }
 
-            if (data.rank) {
-                badges.push({
-                    text: 'Rang: ' + data.rank,
-                    color: 'green'
-                });
-            }
+                if (data.adjutant) {
+                    badges.push({
+                        text: 'Adjutant: ' + data.adjutant,
+                        color: 'green'
+                    });
+                }
 
-            if (data.position) {
-                badges.push({
-                    text: 'Position: ' + data.position,
-                    color: 'light-gray'
-                });
-            }
+                if (data.promotion) {
+                    badges.push({
+                        text: 'Letzte Beförderung: ' + formatDate(data.promotion),
+                        color: 'red'
+                    });
+                }
 
-            if (data.adjutant) {
-                badges.push({
-                    text: 'Adjutant: ' + data.adjutant,
-                    color: 'light-gray'
-                });
-            }
+                if (data.testUntil) {
+                    badges.push({
+                        text: 'Testzeit: ' + formatDate(data.testUntil),
+                        color: 'yellow'
+                    });
+                }
 
-            if (data.promotion) {
-                badges.push({
-                    text: 'Letzte Beförderung: ' + formatDate(data.promotion),
-                    color: 'light-gray'
-                });
-            }
+                if (data.ctId) {
+                    badges.push({
+                        text: 'ID: ' + data.ctId,
+                        color: 'light-gray'
+                    });
+                }
 
-            if (data.testUntil) {
-                badges.push({
-                    text: 'Testzeit: ' + formatDate(data.testUntil),
-                    color: 'light-gray'
-                });
-            }
-
-            if (data.ctId) {
-                badges.push({
-                    text: 'ID: ' + data.ctId,
-                    color: 'light-gray'
-                });
-            }
-
-            return badges;
-        });
+                return badges;
+            });
     },
 
 
@@ -79,20 +70,80 @@ window.TrelloPowerUp.initialize({
             condition: 'edit',
 
             callback: function (t) {
-
                 return t.modal({
                     title: 'CT-Daten bearbeiten',
                     url: './edit.html',
                     height: 650,
                     fullscreen: false
                 });
-
             }
         }];
     }
 
 });
 
+
+// =========================
+// RANGFARBEN
+// =========================
+
+function getRankColor(rank) {
+
+    var colors = {
+        'Private First Class': 'light-gray',
+        'Lance Corporal': 'purple',
+        'Corporal': 'purple',
+
+        'Sergeant': 'green',
+        'Staff Sergeant': 'green',
+        'Sergeant Major': 'green',
+
+        'Lieutenant': 'blue',
+        'First Lieutenant': 'blue',
+
+        'Captain': 'orange'
+    };
+
+    return colors[rank] || 'light-gray';
+}
+
+
+// =========================
+// POSITIONSFARBEN
+// =========================
+
+function getPositionColor(position) {
+
+    var colors = {
+        'Mannschaft': 'purple',
+        'Unteroffizierebene': 'green',
+        'Führungsebene': 'blue',
+        'Hohe Führungsebene': 'orange'
+    };
+
+    return colors[position] || 'light-gray';
+}
+
+
+// =========================
+// UNTEREINHEITEN
+// =========================
+
+function getUnitColor(unit) {
+
+    var colors = {
+        'Rancor Battalion': 'red',
+        'Tactical Combat Instructor': 'green',
+        'Munilist 10': 'blue'
+    };
+
+    return colors[unit] || 'light-gray';
+}
+
+
+// =========================
+// DATUM FORMATIEREN
+// =========================
 
 function formatDate(dateString) {
 
