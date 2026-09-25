@@ -2,9 +2,7 @@
 <html lang="de">
 
 <head>
-
     <meta charset="UTF-8">
-
     <title>CT Fields</title>
 
     <link
@@ -14,7 +12,6 @@
 
     <script src="https://p.trellocdn.com/power-up.min.js"></script>
 
-
     <style>
 
         * {
@@ -23,77 +20,112 @@
 
         body {
             margin: 0;
-            padding: 8px 4px;
+            padding: 4px 2px;
             background: transparent;
         }
-
 
         #ctFields {
             width: 100%;
         }
 
-
         .fields-grid {
-
             display: grid;
-
-            grid-template-columns:
-                repeat(3, minmax(0, 1fr));
-
-            gap: 14px 12px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px 10px;
         }
-
 
         .field {
             min-width: 0;
         }
 
-
         .field label {
-
             display: block;
-
             font-weight: 600;
-
-            margin-bottom: 6px;
+            margin-bottom: 5px;
+            font-size: 13px;
         }
-
 
         select,
         input {
-
             width: 100%;
-
-            min-height: 38px;
+            height: 40px;
 
             padding: 7px 10px;
 
+            border: none;
             border-radius: 4px;
 
-            border: 1px solid rgba(128,128,128,0.35);
-
             font-size: 14px;
+
+            color: #ffffff;
+
+            transition:
+                background-color 0.15s ease,
+                color 0.15s ease;
         }
 
+        select {
+            cursor: pointer;
+        }
 
         select:disabled,
         input:disabled {
-            opacity: 0.85;
+            opacity: 1;
             cursor: default;
         }
 
+        /* Neutral / leer */
 
-        #status {
-
-            margin-top: 12px;
-
-            font-size: 12px;
-
-            opacity: 0.7;
+        .color-neutral {
+            background: #45474c;
+            color: #dddddd;
         }
 
+        /* Farben */
 
-        @media (max-width: 650px) {
+        .color-red {
+            background: #8f2924;
+        }
+
+        .color-blue {
+            background: #1f4f91;
+        }
+
+        .color-green {
+            background: #236c4b;
+        }
+
+        .color-purple {
+            background: #65479a;
+        }
+
+        .color-orange {
+            background: #b85e1c;
+        }
+
+        .color-yellow {
+            background: #856400;
+        }
+
+        .color-sky {
+            background: #238297;
+        }
+
+        .color-lime {
+            background: #596b2c;
+        }
+
+        .color-gray {
+            background: #555960;
+        }
+
+        #status {
+            margin-top: 8px;
+            font-size: 11px;
+            opacity: 0.55;
+        }
+
+        @media (max-width: 560px) {
 
             .fields-grid {
                 grid-template-columns:
@@ -102,22 +134,11 @@
 
         }
 
-
-        @media (max-width: 430px) {
-
-            .fields-grid {
-                grid-template-columns: 1fr;
-            }
-
-        }
-
     </style>
-
 </head>
 
 
 <body>
-
 
 <div id="ctFields">
 
@@ -160,7 +181,7 @@
         <div class="field">
 
             <label for="rank">
-                Rang
+                🏅 Rang
             </label>
 
             <select id="rank">
@@ -271,56 +292,25 @@
                     -- Kein Adjutant --
                 </option>
 
-                <option value="5th">
-                    5th
-                </option>
+                <option value="5th">5th</option>
+                <option value="41st">41st</option>
+                <option value="104th">104th</option>
+                <option value="187th">187th</option>
+                <option value="212th">212th</option>
+                <option value="501st">501st</option>
 
-                <option value="41st">
-                    41st
-                </option>
-
-                <option value="104th">
-                    104th
-                </option>
-
-                <option value="187th">
-                    187th
-                </option>
-
-                <option value="212th">
-                    212th
-                </option>
-
-                <option value="501st">
-                    501st
-                </option>
-
-                <option value="CTP">
-                    CTP
-                </option>
-
-                <option value="GMC">
-                    GMC
-                </option>
-
-                <option value="RMC">
-                    RMC
-                </option>
-
-                <option value="SO">
-                    SO
-                </option>
-
-                <option value="ST">
-                    ST
-                </option>
+                <option value="CTP">CTP</option>
+                <option value="GMC">GMC</option>
+                <option value="RMC">RMC</option>
+                <option value="SO">SO</option>
+                <option value="ST">ST</option>
 
             </select>
 
         </div>
 
 
-        <!-- LETZTE BEFÖRDERUNG -->
+        <!-- BEFÖRDERUNG -->
 
         <div class="field">
 
@@ -371,14 +361,11 @@
 
     </div>
 
-
     <div id="status"></div>
 
 </div>
 
-
 <script src="./fields.js"></script>
-
 
 </body>
 
