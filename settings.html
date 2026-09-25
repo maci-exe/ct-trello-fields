@@ -7,10 +7,12 @@
 
     <title>CT Fields Einstellungen</title>
 
+
     <link
         rel="stylesheet"
         href="https://p.trellocdn.com/power-up.min.css"
     >
+
 
     <script src="https://p.trellocdn.com/power-up.min.js"></script>
 
@@ -21,107 +23,171 @@
             box-sizing: border-box;
         }
 
+
         body {
-            padding: 20px;
             margin: 0;
+            padding: 20px;
         }
 
-        h2 {
-            margin-top: 26px;
-            margin-bottom: 10px;
+
+        #fieldsContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
         }
 
-        h2:first-child {
-            margin-top: 0;
+
+        .field-card {
+
+            border: 1px solid rgba(128,128,128,0.35);
+
+            border-radius: 7px;
+
+            padding: 14px;
+
         }
 
-        .description {
-            opacity: 0.7;
-            margin-bottom: 18px;
-        }
 
-        .config-row {
+        .field-header {
 
             display: grid;
 
             grid-template-columns:
-                minmax(180px, 1fr)
-                150px
-                110px;
+                minmax(160px, 1fr)
+                130px
+                130px
+                auto;
 
             gap: 8px;
 
             align-items: center;
 
-            margin-bottom: 7px;
         }
 
-        .config-row input,
-        .config-row select {
-            margin: 0;
+
+        input,
+        select {
             width: 100%;
+            margin: 0;
         }
 
-        .row-buttons {
+
+        .actions {
             display: flex;
             gap: 4px;
         }
 
-        .row-buttons button {
+
+        .actions button {
             margin: 0;
             padding: 6px 8px;
         }
 
-        .add-button {
-            margin-top: 5px;
+
+        .options {
+
+            margin-top: 14px;
+
+            padding-top: 12px;
+
+            border-top:
+                1px solid rgba(128,128,128,0.25);
+
         }
 
-        .fixed-row {
+
+        .option-row {
 
             display: grid;
 
             grid-template-columns:
-                minmax(180px, 1fr)
-                150px;
+                minmax(160px, 1fr)
+                150px
+                auto;
 
             gap: 8px;
 
+            margin-bottom: 7px;
+
             align-items: center;
 
-            margin-bottom: 8px;
         }
 
-        .bottom-actions {
+
+        .option-title {
+
+            font-size: 12px;
+
+            opacity: 0.7;
+
+            margin-bottom: 8px;
+
+        }
+
+
+        .add-option {
+            margin-top: 4px;
+        }
+
+
+        #addFieldButton {
+            margin-top: 18px;
+        }
+
+
+        .bottom {
 
             position: sticky;
 
             bottom: 0;
 
-            margin-top: 28px;
+            margin-top: 24px;
 
             padding-top: 14px;
-            padding-bottom: 4px;
 
             background: inherit;
+
+        }
+
+
+        .bottom-buttons {
 
             display: flex;
 
             gap: 10px;
+
         }
 
-        .bottom-actions button {
+
+        .bottom-buttons button {
             flex: 1;
         }
 
-        #status {
-            margin-top: 12px;
-            min-height: 18px;
-            font-size: 13px;
+
+        #sizeInfo {
+
+            margin-top: 10px;
+
+            font-size: 12px;
+
+            opacity: 0.65;
+
         }
+
+
+        #status {
+
+            margin-top: 8px;
+
+            min-height: 18px;
+
+        }
+
 
         .error {
             color: #ef5c48;
         }
+
 
         .success {
             color: #4bce97;
@@ -135,40 +201,45 @@
 <body>
 
 
-<p class="description">
-    Diese Einstellungen gelten für das gesamte Board.
-</p>
+<div id="fieldsContainer"></div>
 
 
-<div id="settings"></div>
+<button
+    type="button"
+    id="addFieldButton"
+>
+    + Neue Kategorie
+</button>
 
 
-<h2>Feste Feldfarben</h2>
+<div class="bottom">
 
-<div id="fixedColors"></div>
+    <div class="bottom-buttons">
+
+        <button
+            type="button"
+            id="defaultsButton"
+        >
+            Standardwerte laden
+        </button>
 
 
-<div class="bottom-actions">
+        <button
+            type="button"
+            class="mod-primary"
+            id="saveButton"
+        >
+            Einstellungen speichern
+        </button>
 
-    <button
-        type="button"
-        id="defaultsButton"
-    >
-        Standardwerte laden
-    </button>
+    </div>
 
-    <button
-        type="button"
-        class="mod-primary"
-        id="saveButton"
-    >
-        Einstellungen speichern
-    </button>
+
+    <div id="sizeInfo"></div>
+
+    <div id="status"></div>
 
 </div>
-
-
-<div id="status"></div>
 
 
 <script src="./config.js"></script>
