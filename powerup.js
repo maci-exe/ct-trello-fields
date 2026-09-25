@@ -71,7 +71,7 @@ window.TrelloPowerUp.initialize({
 
             callback: function (t) {
                 return t.modal({
-                    title: 'CT-Daten bearbeiten',
+                    title: 'Daten bearbeiten',
                     url: './edit.html',
                     height: 650,
                     fullscreen: false
@@ -134,7 +134,7 @@ function getUnitColor(unit) {
     var colors = {
         'Rancor Battalion': 'red',
         'Tactical Combat Instructor': 'green',
-        'Munilist 10': 'blue'
+        'Muunilinst 10': 'blue'
     };
 
     return colors[unit] || 'light-gray';
