@@ -1,83 +1,101 @@
 window.TrelloPowerUp.initialize({
 
-    'card-badges': function (t) {
+    // =========================
+    // FELDER DIREKT IN DER KARTE
+    // =========================
 
-        return t.get('card', 'shared', 'characterData', {})
-            .then(function (data) {
+    'card-back-section': function (t) {
 
-                data = data || {};
-                var badges = [];
+        return {
+            title: 'CT Fields',
 
-                if (data.unit) {
-                    badges.push({
-                        text: 'Untereinheit: ' + data.unit,
-                        color: getUnitColor(data.unit)
-                    });
-                }
+            icon: t.signUrl('./icon.svg'),
 
-                if (data.rank) {
-                    badges.push({
-                        text: 'Rang: ' + data.rank,
-                        color: getRankColor(data.rank)
-                    });
-                }
-
-                if (data.position) {
-                    badges.push({
-                        text: 'Position: ' + data.position,
-                        color: getPositionColor(data.position)
-                    });
-                }
-
-                if (data.adjutant) {
-                    badges.push({
-                        text: 'Adjutant: ' + data.adjutant,
-                        color: getAdjutantColor(data.adjutant)
-                    });
-                }
-
-                if (data.promotion) {
-                    badges.push({
-                        text: 'Letzte Beförderung: ' + formatDate(data.promotion),
-                        color: 'red'
-                    });
-                }
-
-                if (data.testUntil) {
-                    badges.push({
-                        text: 'Testzeit: ' + formatDate(data.testUntil),
-                        color: 'yellow'
-                    });
-                }
-
-                if (data.ctId) {
-                    badges.push({
-                        text: 'ID: ' + data.ctId,
-                        color: 'light-gray'
-                    });
-                }
-
-                return badges;
-            });
+            content: {
+                type: 'iframe',
+                url: t.signUrl('./fields.html'),
+                height: 390
+            }
+        };
     },
 
 
-    'card-buttons': function () {
+    // =========================
+    // BADGES AUF KARTENVORDERSEITE
+    // =========================
 
-        return [{
-            icon: './icon.svg',
-            text: 'CT-Daten bearbeiten',
-            condition: 'edit',
+    'card-badges': function (t) {
 
-            callback: function (t) {
-                return t.modal({
-                    title: 'Daten bearbeiten',
-                    url: './edit.html',
-                    height: 650,
-                    fullscreen: false
+        return t.get(
+            'card',
+            'shared',
+            'characterData',
+            {}
+        ).then(function (data) {
+
+            data = data || {};
+
+            var badges = [];
+
+
+            if (data.unit) {
+                badges.push({
+                    text: 'Untereinheit: ' + data.unit,
+                    color: getUnitColor(data.unit)
                 });
             }
-        }];
+
+
+            if (data.rank) {
+                badges.push({
+                    text: 'Rang: ' + data.rank,
+                    color: getRankColor(data.rank)
+                });
+            }
+
+
+            if (data.position) {
+                badges.push({
+                    text: 'Position: ' + data.position,
+                    color: getPositionColor(data.position)
+                });
+            }
+
+
+            if (data.adjutant) {
+                badges.push({
+                    text: 'Adjutant: ' + data.adjutant,
+                    color: getAdjutantColor(data.adjutant)
+                });
+            }
+
+
+            if (data.promotion) {
+                badges.push({
+                    text: 'Letzte Beförderung: ' + formatDate(data.promotion),
+                    color: 'red'
+                });
+            }
+
+
+            if (data.testUntil) {
+                badges.push({
+                    text: 'Testzeit: ' + formatDate(data.testUntil),
+                    color: 'yellow'
+                });
+            }
+
+
+            if (data.ctId) {
+                badges.push({
+                    text: 'ID: ' + data.ctId,
+                    color: 'light-gray'
+                });
+            }
+
+
+            return badges;
+        });
     }
 
 });
@@ -90,6 +108,7 @@ window.TrelloPowerUp.initialize({
 function getRankColor(rank) {
 
     var colors = {
+
         'Private First Class': 'light-gray',
 
         'Lance Corporal': 'purple',
@@ -119,6 +138,7 @@ function getRankColor(rank) {
 function getPositionColor(position) {
 
     var colors = {
+
         'Mannschaft': 'purple',
         'Unteroffizierebene': 'green',
         'Führungsebene': 'blue',
@@ -136,6 +156,7 @@ function getPositionColor(position) {
 function getUnitColor(unit) {
 
     var colors = {
+
         'Rancor Battalion': 'red',
         'Tactical Combat Instructor': 'green',
         'Muunilinst 10': 'blue'
@@ -146,31 +167,13 @@ function getUnitColor(unit) {
 
 
 // =========================
-// DATUM FORMATIEREN
-// =========================
-
-function formatDate(dateString) {
-
-    if (!dateString) {
-        return '';
-    }
-
-    var parts = dateString.split('-');
-
-    if (parts.length !== 3) {
-        return dateString;
-    }
-
-    return parts[2] + '.' + parts[1] + '.' + parts[0];
-}
-
-// =========================
-// ADJUDATEN
+// ADJUTANTEN
 // =========================
 
 function getAdjutantColor(adjutant) {
 
     var colors = {
+
         '5th': 'sky',
         '41st': 'green',
         '104th': 'light-gray',
@@ -188,3 +191,22 @@ function getAdjutantColor(adjutant) {
     return colors[adjutant] || 'light-gray';
 }
 
+
+// =========================
+// DATUM
+// =========================
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+        return '';
+    }
+
+    var parts = dateString.split('-');
+
+    if (parts.length !== 3) {
+        return dateString;
+    }
+
+    return parts[2] + '.' + parts[1] + '.' + parts[0];
+}
