@@ -1,55 +1,237 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
+
 <head>
     <meta charset="UTF-8">
+    <title>CT-Daten bearbeiten</title>
 
-    <link rel="stylesheet"
-          href="https://p.trellocdn.com/power-up.min.css">
-
-    <style>
-        body {
-            padding: 10px;
-        }
-
-        select {
-            width: 100%;
-            margin-bottom: 12px;
-        }
-
-        button {
-            width: 100%;
-        }
-    </style>
+    <link
+        rel="stylesheet"
+        href="https://p.trellocdn.com/power-up.min.css"
+    >
 
     <script src="https://p.trellocdn.com/power-up.min.js"></script>
+
+    <style>
+
+        body {
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        .form-container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .buttons {
+            margin-top: 28px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .buttons button {
+            flex: 1;
+        }
+
+    </style>
 </head>
+
 
 <body>
 
-<form id="ctForm">
+<div class="form-container">
 
-    <label for="rank">Rang</label>
+    <form id="ctForm">
 
-    <select id="rank">
-        <option value="">-- Rang auswählen --</option>
-        <option value="Private First Class">Private First Class</option>
-        <option value="Lance Corporal">Lance Corporal</option>
-        <option value="Corporal">Corporal</option>
-        <option value="Sergeant">Sergeant</option>
-        <option value="Staff Sergeant">Staff Sergeant</option>
-        <option value="Sergeant Major">Sergeant Major</option>
-        <option value="Lieutenant">Lieutenant</option>
-        <option value="First Lieutenant">First Lieutenant</option>
-        <option value="Captain">Captain</option>
-    </select>
+        <div class="field">
+            <label for="unit">Untereinheit</label>
 
-    <button type="submit" class="mod-primary">
-        Speichern
-    </button>
+            <input
+                type="text"
+                id="unit"
+                placeholder="z.B. Rancor Battalion"
+            >
+        </div>
 
-</form>
+
+        <div class="field">
+            <label for="rank">Rang</label>
+
+            <select id="rank">
+
+                <option value="">-- Kein Rang --</option>
+
+                <option value="Private First Class">
+                    Private First Class
+                </option>
+
+                <option value="Lance Corporal">
+                    Lance Corporal
+                </option>
+
+                <option value="Corporal">
+                    Corporal
+                </option>
+
+                <option value="Sergeant">
+                    Sergeant
+                </option>
+
+                <option value="Staff Sergeant">
+                    Staff Sergeant
+                </option>
+
+                <option value="Sergeant Major">
+                    Sergeant Major
+                </option>
+
+                <option value="Lieutenant">
+                    Lieutenant
+                </option>
+
+                <option value="First Lieutenant">
+                    First Lieutenant
+                </option>
+
+                <option value="Captain">
+                    Captain
+                </option>
+
+            </select>
+        </div>
+
+
+        <div class="field">
+
+            <label for="position">Position</label>
+
+            <select id="position">
+
+                <option value="">
+                    -- Keine Position --
+                </option>
+
+                <option value="Mannschaft">
+                    Mannschaft
+                </option>
+
+                <option value="Unteroffizierebene">
+                    Unteroffizierebene
+                </option>
+
+                <option value="Führungsebene">
+                    Führungsebene
+                </option>
+
+                <option value="Hohe Führungsebene">
+                    Hohe Führungsebene
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div class="field">
+
+            <label for="adjutant">
+                Adjutant
+            </label>
+
+            <input
+                type="text"
+                id="adjutant"
+                placeholder="z.B. CTP, 104th, 187th"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label for="promotion">
+                Letzte Beförderung
+            </label>
+
+            <input
+                type="date"
+                id="promotion"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label for="testUntil">
+                Testzeit
+            </label>
+
+            <input
+                type="date"
+                id="testUntil"
+            >
+
+        </div>
+
+
+        <div class="field">
+
+            <label for="ctId">
+                ID
+            </label>
+
+            <input
+                type="text"
+                id="ctId"
+                placeholder="z.B. 62-7597"
+            >
+
+        </div>
+
+
+        <div class="buttons">
+
+            <button
+                type="button"
+                id="cancelButton"
+            >
+                Abbrechen
+            </button>
+
+            <button
+                type="submit"
+                class="mod-primary"
+            >
+                Speichern
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
 
 <script src="./edit.js"></script>
 
 </body>
+
 </html>
