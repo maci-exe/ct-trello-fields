@@ -823,60 +823,179 @@ defaultsButton.addEventListener('click', function () {
 });
 
 
-saveButton.addEventListener('click', function () {
+function waitWithTimeout(promise, milliseconds) {
+
+    return Promise.race([
+        promise,
+
+        new Promise(function (_, reject) {
+
+            setTimeout(function () {
+                reject(new Error('timeout'));
+            }, milliseconds);
+
+        })
+    ]);
+}
+
+
+function finishSaveSuccess() {
+
+    isDirty = false;
+
+    setStatus(
+        'Einstellungen gespeichert ✓',
+        'success'
+    );
+
+    setSaveButtonState('saved');
+
+    updateSizeInfo();
+}
+
+
+saveButton.addEventListener('click', async function () {
 
     if (!t.memberCanWriteToModel('board')) {
-        setStatus('Keine Schreibberechtigung.', 'error');
+
+        setStatus(
+            'Keine Schreibberechtigung.',
+            'error'
+        );
+
         return;
     }
+
 
     var validation =
         validateSchema();
 
+
     if (!validation.valid) {
-        setStatus(validation.message, 'error');
+
+        setStatus(
+            validation.message,
+            'error'
+        );
+
         return;
     }
 
+
     var encoded =
         ctEncodeSchema(schema);
+
 
     var size =
         JSON.stringify({
             ctSchema: encoded
         }).length;
 
+
     if (size > 3900) {
+
         setStatus(
-            'Die Konfiguration ist zu groß. Bitte Kategorien oder Optionen reduzieren.',
+            'Die Konfiguration ist zu groß.',
             'error'
         );
+
         return;
     }
 
+
     setSaveButtonState('saving');
-    setStatus('Speichere Einstellungen...', 'info');
 
-    return t.set(
-        'board',
-        'shared',
-        'ctSchema',
-        encoded
-    ).then(function () {
+    setStatus(
+        'Speichere Einstellungen...',
+        'info'
+    );
 
-        isDirty = false;
 
-        setStatus('Einstellungen gespeichert.', 'success');
-        setSaveButtonState('saved');
-        updateSizeInfo();
+    try {
 
-    }).catch(function (error) {
+        try {
+
+            // Normal speichern.
+            // Maximal 3 Sekunden auf Promise warten.
+
+            await waitWithTimeout(
+
+                t.set(
+                    'board',
+                    'shared',
+                    'ctSchema',
+                    encoded
+                ),
+
+                3000
+
+            );
+
+
+            finishSaveSuccess();
+
+        } catch (error) {
+
+            if (error.message !== 'timeout') {
+                throw error;
+            }
+
+
+            // Falls Trello die Daten gespeichert hat,
+            // aber das Promise nicht sauber zurückkommt:
+            // Wert erneut lesen und vergleichen.
+
+            setStatus(
+                'Prüfe Speicherung...',
+                'info'
+            );
+
+
+            var savedSchema =
+                await waitWithTimeout(
+
+                    t.get(
+                        'board',
+                        'shared',
+                        'ctSchema',
+                        null
+                    ),
+
+                    3000
+
+                );
+
+
+            if (
+                JSON.stringify(savedSchema) ===
+                JSON.stringify(encoded)
+            ) {
+
+                finishSaveSuccess();
+
+            } else {
+
+                throw new Error(
+                    'Speicherung konnte nicht bestätigt werden.'
+                );
+            }
+
+        }
+
+    } catch (error) {
 
         console.error(error);
 
-        setStatus('Fehler beim Speichern.', 'error');
-        setSaveButtonState(isDirty ? 'dirty' : 'default');
-    });
+        setStatus(
+            'Fehler beim Speichern.',
+            'error'
+        );
+
+        setSaveButtonState(
+            isDirty ? 'dirty' : 'default'
+        );
+    }
+
 });
 
 
