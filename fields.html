@@ -7,10 +7,12 @@
 
     <title>CT Fields</title>
 
+
     <link
         rel="stylesheet"
         href="https://p.trellocdn.com/power-up.min.css"
     >
+
 
     <script src="https://p.trellocdn.com/power-up.min.js"></script>
 
@@ -21,57 +23,81 @@
             box-sizing: border-box;
         }
 
+
         body {
             margin: 0;
             padding: 4px 2px;
             background: transparent;
         }
 
+
         #ctFields {
             width: 100%;
         }
 
-        .fields-grid {
+
+        #fieldsGrid {
+
             display: grid;
+
             grid-template-columns:
                 repeat(3, minmax(0, 1fr));
+
             gap: 12px 10px;
+
         }
+
 
         .field {
             min-width: 0;
         }
 
+
         .field label {
+
             display: block;
+
             font-weight: 600;
+
             margin-bottom: 5px;
+
             font-size: 13px;
+
         }
+
 
         select,
         input {
 
             width: 100%;
+
             height: 40px;
 
             padding: 7px 10px;
 
             border: none;
+
             border-radius: 4px;
 
+            color: white;
+
             font-size: 14px;
-            color: #ffffff;
+
         }
+
 
         select {
             cursor: pointer;
         }
 
+
         select:disabled,
         input:disabled {
+
             opacity: 1;
+
             cursor: default;
+
         }
 
 
@@ -113,17 +139,35 @@
 
 
         #status {
+
             margin-top: 8px;
+
             font-size: 11px;
+
             opacity: 0.55;
+
         }
 
 
         @media (max-width: 560px) {
 
-            .fields-grid {
+            #fieldsGrid {
+
                 grid-template-columns:
                     repeat(2, minmax(0, 1fr));
+
+            }
+
+        }
+
+
+        @media (max-width: 400px) {
+
+            #fieldsGrid {
+
+                grid-template-columns:
+                    1fr;
+
             }
 
         }
@@ -138,98 +182,7 @@
 
 <div id="ctFields">
 
-    <div class="fields-grid">
-
-
-        <div class="field">
-
-            <label for="unit">
-                Untereinheit
-            </label>
-
-            <select id="unit"></select>
-
-        </div>
-
-
-        <div class="field">
-
-            <label for="rank">
-                🏅 Rang
-            </label>
-
-            <select id="rank"></select>
-
-        </div>
-
-
-        <div class="field">
-
-            <label for="position">
-                Position
-            </label>
-
-            <select id="position"></select>
-
-        </div>
-
-
-        <div class="field">
-
-            <label for="adjutant">
-                Adjutant
-            </label>
-
-            <select id="adjutant"></select>
-
-        </div>
-
-
-        <div class="field">
-
-            <label for="promotion">
-                Letzte Beförderung
-            </label>
-
-            <input
-                type="date"
-                id="promotion"
-            >
-
-        </div>
-
-
-        <div class="field">
-
-            <label for="testUntil">
-                Testzeit
-            </label>
-
-            <input
-                type="date"
-                id="testUntil"
-            >
-
-        </div>
-
-
-        <div class="field">
-
-            <label for="ctId">
-                ID
-            </label>
-
-            <input
-                type="text"
-                id="ctId"
-                placeholder="z.B. CT-5590"
-            >
-
-        </div>
-
-
-    </div>
-
+    <div id="fieldsGrid"></div>
 
     <div id="status"></div>
 
