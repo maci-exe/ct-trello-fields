@@ -1,214 +1,247 @@
-var t = window.TrelloPowerUp.iframe();
+var t =
+    window.TrelloPowerUp.iframe();
 
 
-// =========================
-// ELEMENTE
-// =========================
+var unit =
+    document.getElementById('unit');
 
-var unit = document.getElementById('unit');
-var rank = document.getElementById('rank');
-var position = document.getElementById('position');
-var adjutant = document.getElementById('adjutant');
+var rank =
+    document.getElementById('rank');
 
-var promotion = document.getElementById('promotion');
-var testUntil = document.getElementById('testUntil');
-var ctId = document.getElementById('ctId');
+var position =
+    document.getElementById('position');
 
-var status = document.getElementById('status');
+var adjutant =
+    document.getElementById('adjutant');
+
+var promotion =
+    document.getElementById('promotion');
+
+var testUntil =
+    document.getElementById('testUntil');
+
+var ctId =
+    document.getElementById('ctId');
+
+var status =
+    document.getElementById('status');
+
 
 var loaded = false;
 var canWrite = false;
 
+var config =
+    ctGetDefaultConfig();
+
 
 // =========================
-// FARBFUNKTION
+// DROPDOWN BAUEN
 // =========================
 
-function setColor(element, color) {
+function buildSelect(
+    element,
+    items,
+    emptyText
+) {
 
-    var classes = [
-        'color-neutral',
-        'color-red',
-        'color-blue',
-        'color-green',
-        'color-purple',
-        'color-orange',
-        'color-yellow',
-        'color-sky',
-        'color-lime',
-        'color-gray'
-    ];
+    element.innerHTML = '';
 
-    classes.forEach(function (className) {
-        element.classList.remove(className);
+
+    var empty =
+        document.createElement('option');
+
+    empty.value = '';
+    empty.textContent = emptyText;
+
+    element.appendChild(empty);
+
+
+    items.forEach(function (item) {
+
+        var option =
+            document.createElement('option');
+
+        option.value =
+            item.id;
+
+        option.textContent =
+            item.label;
+
+        element.appendChild(option);
+
     });
 
+}
+
+
+// =========================
+// ALTEN / NEUEN WERT SETZEN
+// =========================
+
+function setStoredValue(
+    element,
+    section,
+    storedValue
+) {
+
+    if (!storedValue) {
+
+        element.value = '';
+        return;
+
+    }
+
+
+    var item =
+        ctFindItem(
+            config,
+            section,
+            storedValue
+        );
+
+
+    if (item) {
+
+        element.value =
+            item.id;
+
+        return;
+
+    }
+
+
+    // Falls eine Option später gelöscht wurde,
+    // verlieren wir den gespeicherten Wert nicht.
+
+    var legacy =
+        document.createElement('option');
+
+    legacy.value =
+        storedValue;
+
+    legacy.textContent =
+        storedValue + ' (Altwert)';
+
+    element.appendChild(legacy);
+
+    element.value =
+        storedValue;
+}
+
+
+// =========================
+// FARBE
+// =========================
+
+function setColor(
+    element,
+    color
+) {
+
+    var colors = [
+        'light-gray',
+        'red',
+        'blue',
+        'green',
+        'purple',
+        'orange',
+        'yellow',
+        'sky',
+        'lime'
+    ];
+
+
+    colors.forEach(function (value) {
+
+        element.classList.remove(
+            'color-' + value
+        );
+
+    });
+
+
     element.classList.add(
-        color ? 'color-' + color : 'color-neutral'
+        'color-' +
+        (color || 'light-gray')
     );
+
 }
 
 
 // =========================
-// UNTEREINHEIT
-// =========================
-
-function getUnitColor(value) {
-
-    var colors = {
-
-        'Muunilinst 10': 'blue',
-
-        'Rancor Battalion': 'red',
-
-        'Tactical Combat Instructor': 'green'
-
-    };
-
-    return colors[value] || 'neutral';
-}
-
-
-// =========================
-// RANG
-// =========================
-
-function getRankColor(value) {
-
-    var colors = {
-
-        'Private First Class': 'gray',
-
-        'Lance Corporal': 'purple',
-        'Corporal': 'purple',
-
-        'Sergeant': 'green',
-        'Staff Sergeant': 'green',
-        'Sergeant Major': 'green',
-
-        'Lieutenant': 'blue',
-        'First Lieutenant': 'blue',
-
-        'Captain': 'red',
-
-        'Major': 'orange',
-
-        'Commander': 'yellow',
-
-        'High General': 'purple'
-
-    };
-
-    return colors[value] || 'neutral';
-}
-
-
-// =========================
-// POSITION
-// =========================
-
-function getPositionColor(value) {
-
-    var colors = {
-
-        'Mannschaft': 'purple',
-
-        'Unteroffizierebene': 'green',
-
-        'Führungsebene': 'blue',
-
-        'Hohe Führungsebene': 'red'
-
-    };
-
-    return colors[value] || 'neutral';
-}
-
-
-// =========================
-// ADJUTANT
-// =========================
-
-function getAdjutantColor(value) {
-
-    var colors = {
-
-        '5th': 'sky',
-
-        '41st': 'green',
-
-        '104th': 'gray',
-
-        '187th': 'purple',
-
-        '212th': 'orange',
-
-        '501st': 'blue',
-
-        'CTP': 'lime',
-
-        'GMC': 'purple',
-
-        'RMC': 'red',
-
-        'SO': 'sky',
-
-        'ST': 'red'
-
-    };
-
-    return colors[value] || 'neutral';
-}
-
-
-// =========================
-// ALLE FARBEN AKTUALISIEREN
+// FARBEN AKTUALISIEREN
 // =========================
 
 function updateColors() {
 
     setColor(
         unit,
-        getUnitColor(unit.value)
+        ctGetChoiceColor(
+            config,
+            'units',
+            unit.value
+        )
     );
+
 
     setColor(
         rank,
-        getRankColor(rank.value)
+        ctGetChoiceColor(
+            config,
+            'ranks',
+            rank.value
+        )
     );
+
 
     setColor(
         position,
-        getPositionColor(position.value)
+        ctGetChoiceColor(
+            config,
+            'positions',
+            position.value
+        )
     );
+
 
     setColor(
         adjutant,
-        getAdjutantColor(adjutant.value)
+        ctGetChoiceColor(
+            config,
+            'adjutants',
+            adjutant.value
+        )
     );
 
-
-    // feste Farben
 
     setColor(
         promotion,
-        promotion.value ? 'red' : 'neutral'
+        promotion.value
+            ? config.fixedColors.promotion
+            : 'light-gray'
     );
+
 
     setColor(
         testUntil,
-        testUntil.value ? 'yellow' : 'neutral'
+        testUntil.value
+            ? config.fixedColors.testUntil
+            : 'light-gray'
     );
+
 
     setColor(
         ctId,
-        ctId.value ? 'gray' : 'neutral'
+        ctId.value
+            ? config.fixedColors.ctId
+            : 'light-gray'
     );
+
 }
 
 
 // =========================
-// FORMULARDATEN
+// DATEN HOLEN
 // =========================
 
 function getFormData() {
@@ -237,6 +270,7 @@ function getFormData() {
             ctId.value.trim()
 
     };
+
 }
 
 
@@ -246,13 +280,19 @@ function getFormData() {
 
 function saveData() {
 
-    if (!loaded || !canWrite) {
+    if (
+        !loaded ||
+        !canWrite
+    ) {
         return;
     }
 
+
     updateColors();
 
-    status.textContent = 'Speichere...';
+    status.textContent =
+        'Speichere...';
+
 
     return t.set(
 
@@ -266,7 +306,8 @@ function saveData() {
 
     ).then(function () {
 
-        status.textContent = 'Gespeichert';
+        status.textContent =
+            'Gespeichert';
 
     }).catch(function (error) {
 
@@ -284,20 +325,40 @@ function saveData() {
 // EVENTS
 // =========================
 
-unit.addEventListener('change', saveData);
+unit.addEventListener(
+    'change',
+    saveData
+);
 
-rank.addEventListener('change', saveData);
+rank.addEventListener(
+    'change',
+    saveData
+);
 
-position.addEventListener('change', saveData);
+position.addEventListener(
+    'change',
+    saveData
+);
 
-adjutant.addEventListener('change', saveData);
+adjutant.addEventListener(
+    'change',
+    saveData
+);
 
-promotion.addEventListener('change', saveData);
+promotion.addEventListener(
+    'change',
+    saveData
+);
 
-testUntil.addEventListener('change', saveData);
+testUntil.addEventListener(
+    'change',
+    saveData
+);
 
-ctId.addEventListener('change', saveData);
-
+ctId.addEventListener(
+    'change',
+    saveData
+);
 
 ctId.addEventListener(
     'input',
@@ -312,7 +373,6 @@ ctId.addEventListener(
         if (event.key === 'Enter') {
 
             event.preventDefault();
-
             ctId.blur();
 
         }
@@ -329,49 +389,91 @@ t.render(function () {
 
     loaded = false;
 
+    canWrite =
+        t.memberCanWriteToModel('card');
 
-    var context =
-        t.getContext();
 
+    return Promise.all([
 
-    canWrite = !!(
+        t.get(
+            'board',
+            'shared',
+            'ctConfig',
+            null
+        ),
 
-        context.permissions &&
-
-        (
-            context.permissions.card === 'write' ||
-            context.permissions.board === 'write'
+        t.get(
+            'card',
+            'shared',
+            'characterData',
+            {}
         )
 
-    );
+    ]).then(function (values) {
+
+        config =
+            ctNormalizeConfig(
+                values[0]
+            );
 
 
-    return t.get(
-
-        'card',
-
-        'shared',
-
-        'characterData',
-
-        {}
-
-    ).then(function (data) {
-
-        data = data || {};
+        var data =
+            values[1] || {};
 
 
-        unit.value =
-            data.unit || '';
+        // Dropdowns dynamisch bauen
 
-        rank.value =
-            data.rank || '';
+        buildSelect(
+            unit,
+            config.units,
+            '-- Keine Untereinheit --'
+        );
 
-        position.value =
-            data.position || '';
+        buildSelect(
+            rank,
+            config.ranks,
+            '-- Kein Rang --'
+        );
 
-        adjutant.value =
-            data.adjutant || '';
+        buildSelect(
+            position,
+            config.positions,
+            '-- Keine Position --'
+        );
+
+        buildSelect(
+            adjutant,
+            config.adjutants,
+            '-- Kein Adjutant --'
+        );
+
+
+        // gespeicherte Daten laden
+
+        setStoredValue(
+            unit,
+            'units',
+            data.unit
+        );
+
+        setStoredValue(
+            rank,
+            'ranks',
+            data.rank
+        );
+
+        setStoredValue(
+            position,
+            'positions',
+            data.position
+        );
+
+        setStoredValue(
+            adjutant,
+            'adjutants',
+            data.adjutant
+        );
+
 
         promotion.value =
             data.promotion || '';
@@ -386,20 +488,16 @@ t.render(function () {
         updateColors();
 
 
-        var controls =
-            document.querySelectorAll(
+        document
+            .querySelectorAll(
                 'select, input'
-            );
-
-
-        controls.forEach(
-            function (control) {
+            )
+            .forEach(function (control) {
 
                 control.disabled =
                     !canWrite;
 
-            }
-        );
+            });
 
 
         status.textContent =
@@ -409,6 +507,11 @@ t.render(function () {
 
 
         loaded = true;
+
+
+        return t.sizeTo(
+            '#ctFields'
+        );
 
     });
 
