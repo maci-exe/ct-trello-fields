@@ -1,46 +1,37 @@
-var t =
-    window.TrelloPowerUp.iframe();
+var t = window.TrelloPowerUp.iframe();
 
+
+// ======================================================
+// DOM
+// ======================================================
 
 var fieldsContainer =
-    document.getElementById(
-        'fieldsContainer'
-    );
-
+    document.getElementById('fieldsContainer');
 
 var addFieldButton =
-    document.getElementById(
-        'addFieldButton'
-    );
-
+    document.getElementById('addFieldButton');
 
 var defaultsButton =
-    document.getElementById(
-        'defaultsButton'
-    );
-
+    document.getElementById('defaultsButton');
 
 var saveButton =
-    document.getElementById(
-        'saveButton'
-    );
-
+    document.getElementById('saveButton');
 
 var status =
-    document.getElementById(
-        'status'
-    );
-
+    document.getElementById('status');
 
 var sizeInfo =
-    document.getElementById(
-        'sizeInfo'
-    );
+    document.getElementById('sizeInfo');
 
+
+// ======================================================
+// STATE
+// ======================================================
 
 var schema =
     ctGetDefaultSchema();
 
+var boardSharedData = {};
 
 var counter = 0;
 
@@ -50,12 +41,10 @@ var openState = {};
 
 var saveButtonTimer = null;
 
-var saveOperation = 0;
 
-
-// =========================
-// IDs
-// =========================
+// ======================================================
+// HILFSFUNKTIONEN
+// ======================================================
 
 function createId(prefix) {
 
@@ -68,13 +57,8 @@ function createId(prefix) {
         '-' +
         counter
     );
-
 }
 
-
-// =========================
-// LABELS
-// =========================
 
 function getTypeLabel(type) {
 
@@ -87,75 +71,62 @@ function getTypeLabel(type) {
     }
 
     return 'Text';
-
 }
 
 
-function getColorLabel(colorValue) {
+function getColorLabel(value) {
 
     var match =
-        CT_COLOR_OPTIONS.find(
-            function (item) {
-
-                return (
-                    item.value ===
-                    colorValue
-                );
-
-            }
-        );
-
+        CT_COLOR_OPTIONS.find(function (item) {
+            return item.value === value;
+        });
 
     return match
         ? match.label
-        : colorValue;
-
+        : value;
 }
 
 
-// =========================
+function getCssColor(value) {
+
+    var colors = {
+
+        'light-gray': '#555960',
+        'red': '#8f2924',
+        'blue': '#1f4f91',
+        'green': '#236c4b',
+        'purple': '#65479a',
+        'orange': '#a95412',
+        'yellow': '#856400',
+        'sky': '#238297',
+        'lime': '#596b2c'
+
+    };
+
+    return colors[value] || colors['light-gray'];
+}
+
+
+// ======================================================
 // STATUS
-// =========================
+// ======================================================
 
-function setStatus(
-    message,
-    type
-) {
+function setStatus(message, type) {
 
-    status.textContent =
-        message;
-
+    status.textContent = message;
 
     status.className =
-        'status-pill';
-
-
-    status.classList.add(
-        'status-' +
-        (type || 'neutral')
-    );
-
+        'status-pill status-' +
+        (type || 'neutral');
 }
 
-
-// =========================
-// SAVE BUTTON STATE
-// =========================
 
 function setSaveButtonState(state) {
 
-    clearTimeout(
-        saveButtonTimer
-    );
+    clearTimeout(saveButtonTimer);
 
-
-    saveButton.disabled =
-        false;
-
-
-    saveButton.classList.add(
-        'mod-primary'
-    );
+    saveButton.disabled = false;
+    saveButton.classList.add('mod-primary');
 
 
     if (state === 'saving') {
@@ -163,11 +134,9 @@ function setSaveButtonState(state) {
         saveButton.textContent =
             'Speichere...';
 
-        saveButton.disabled =
-            true;
+        saveButton.disabled = true;
 
         return;
-
     }
 
 
@@ -176,23 +145,18 @@ function setSaveButtonState(state) {
         saveButton.textContent =
             'Gespeichert ✓';
 
-
         saveButtonTimer =
-            setTimeout(
-                function () {
+            setTimeout(function () {
 
-                    setSaveButtonState(
-                        isDirty
-                            ? 'dirty'
-                            : 'default'
-                    );
+                setSaveButtonState(
+                    isDirty
+                        ? 'dirty'
+                        : 'default'
+                );
 
-                },
-                1800
-            );
+            }, 1800);
 
         return;
-
     }
 
 
@@ -202,45 +166,212 @@ function setSaveButtonState(state) {
             'Änderungen speichern';
 
         return;
-
     }
 
 
     saveButton.textContent =
         'Einstellungen speichern';
-
 }
 
-
-// =========================
-// DIRTY STATE
-// =========================
 
 function markDirty(message) {
 
     isDirty = true;
 
-
-    setSaveButtonState(
-        'dirty'
-    );
-
+    setSaveButtonState('dirty');
 
     setStatus(
-        message ||
-        'Ungespeicherte Änderungen',
+        message || 'Ungespeicherte Änderungen',
         'warning'
     );
 
-
     updateSizeInfo();
-
 }
 
 
-// =========================
+// ======================================================
+// SCHEMA RECOVERY
+// ======================================================
+
+function rawSchemaHasFields(raw) {
+
+    if (!raw) {
+        return false;
+    }
+
+
+    // Kompaktes Schema
+    if (
+        raw.v === 2 &&
+        Array.isArray(raw.f) &&
+        raw.f.length > 0
+    ) {
+        return true;
+    }
+
+
+    // Unkomprimiertes Schema
+    if (
+        raw.version === 2 &&
+        Array.isArray(raw.fields) &&
+        raw.fields.length > 0
+    ) {
+        return true;
+    }
+
+
+    return false;
+}
+
+
+// Alte ctConfig-Struktur aus unserer früheren Version
+// in das neue dynamische Schema umwandeln.
+
+function migrateLegacyConfig(legacy) {
+
+    if (
+        !legacy ||
+        typeof legacy !== 'object'
+    ) {
+        return null;
+    }
+
+
+    var hasSomething =
+        Array.isArray(legacy.units) ||
+        Array.isArray(legacy.ranks) ||
+        Array.isArray(legacy.positions) ||
+        Array.isArray(legacy.adjutants);
+
+
+    if (!hasSomething) {
+        return null;
+    }
+
+
+    function cloneOptions(items) {
+
+        if (!Array.isArray(items)) {
+            return [];
+        }
+
+        return items.map(function (item) {
+
+            return {
+
+                id:
+                    item.id ||
+                    createId('legacy-option'),
+
+                label:
+                    item.label ||
+                    item.name ||
+                    item.id ||
+                    'Unbekannt',
+
+                color:
+                    item.color ||
+                    'light-gray'
+
+            };
+
+        });
+    }
+
+
+    var fixed =
+        legacy.fixedColors || {};
+
+
+    return {
+
+        version: 2,
+
+        fields: [
+
+            {
+                id: 'unit',
+                label: 'Untereinheit',
+                type: 'select',
+                color: 'light-gray',
+                options:
+                    cloneOptions(
+                        legacy.units
+                    )
+            },
+
+            {
+                id: 'rank',
+                label: 'Rang',
+                type: 'select',
+                color: 'light-gray',
+                options:
+                    cloneOptions(
+                        legacy.ranks
+                    )
+            },
+
+            {
+                id: 'position',
+                label: 'Position',
+                type: 'select',
+                color: 'light-gray',
+                options:
+                    cloneOptions(
+                        legacy.positions
+                    )
+            },
+
+            {
+                id: 'adjutant',
+                label: 'Adjutant',
+                type: 'select',
+                color: 'light-gray',
+                options:
+                    cloneOptions(
+                        legacy.adjutants
+                    )
+            },
+
+            {
+                id: 'promotion',
+                label: 'Letzte Beförderung',
+                type: 'date',
+                color:
+                    fixed.promotion ||
+                    'red',
+                options: []
+            },
+
+            {
+                id: 'testUntil',
+                label: 'Testzeit',
+                type: 'date',
+                color:
+                    fixed.testUntil ||
+                    'yellow',
+                options: []
+            },
+
+            {
+                id: 'ctId',
+                label: 'ID',
+                type: 'text',
+                color:
+                    fixed.ctId ||
+                    'light-gray',
+                options: []
+            }
+
+        ]
+
+    };
+}
+
+
+// ======================================================
 // COLOR SELECT
-// =========================
+// ======================================================
 
 function createColorSelect(
     currentColor,
@@ -248,23 +379,17 @@ function createColorSelect(
 ) {
 
     var select =
-        document.createElement(
-            'select'
-        );
+        document.createElement('select');
 
 
     CT_COLOR_OPTIONS.forEach(
         function (color) {
 
             var option =
-                document.createElement(
-                    'option'
-                );
-
+                document.createElement('option');
 
             option.value =
                 color.value;
-
 
             option.textContent =
                 color.label;
@@ -277,13 +402,10 @@ function createColorSelect(
 
                 option.selected =
                     true;
-
             }
 
 
-            select.appendChild(
-                option
-            );
+            select.appendChild(option);
 
         }
     );
@@ -293,9 +415,7 @@ function createColorSelect(
         'change',
         function () {
 
-            callback(
-                select.value
-            );
+            callback(select.value);
 
             markDirty();
 
@@ -304,13 +424,12 @@ function createColorSelect(
 
 
     return select;
-
 }
 
 
-// =========================
-// ARRAY ELEMENT VERSCHIEBEN
-// =========================
+// ======================================================
+// MOVE
+// ======================================================
 
 function moveItem(
     array,
@@ -328,11 +447,10 @@ function moveItem(
     ) {
 
         return false;
-
     }
 
 
-    var temporary =
+    var old =
         array[index];
 
 
@@ -341,92 +459,43 @@ function moveItem(
 
 
     array[newIndex] =
-        temporary;
+        old;
 
 
     return true;
-
 }
 
 
-// =========================
-// BUTTON HELPER
-// =========================
-
-function createActionButton(
-    text,
-    title,
-    callback
-) {
-
-    var button =
-        document.createElement(
-            'button'
-        );
-
-
-    button.type =
-        'button';
-
-
-    button.textContent =
-        text;
-
-
-    button.title =
-        title || text;
-
-
-    button.addEventListener(
-        'click',
-        callback
-    );
-
-
-    return button;
-
-}
-
-
-// =========================
-// GROUP HELPER
-// =========================
+// ======================================================
+// GROUP
+// ======================================================
 
 function createGroup(labelText) {
 
     var wrapper =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     wrapper.className =
         'group';
 
 
     var label =
-        document.createElement(
-            'label'
-        );
-
+        document.createElement('label');
 
     label.textContent =
         labelText;
 
 
-    wrapper.appendChild(
-        label
-    );
+    wrapper.appendChild(label);
 
 
     return wrapper;
-
 }
 
 
-// =========================
-// AUSWAHLOPTIONEN RENDERN
-// =========================
+// ======================================================
+// AUSWAHLOPTIONEN
+// ======================================================
 
 function renderOptions(
     field,
@@ -434,162 +503,128 @@ function renderOptions(
 ) {
 
     var panel =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     panel.className =
         'options-panel';
 
 
     var head =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     head.className =
         'options-head';
 
 
-    var headText =
-        document.createElement(
-            'div'
-        );
+    var text =
+        document.createElement('div');
 
 
     var headline =
-        document.createElement(
-            'h3'
-        );
-
+        document.createElement('h3');
 
     headline.textContent =
         'Auswahloptionen';
 
 
     var description =
-        document.createElement(
-            'p'
-        );
-
+        document.createElement('p');
 
     description.textContent =
         'Diese Optionen gehören zu "' +
-        (field.label || 'Neue Kategorie') +
+        field.label +
         '".';
 
 
-    headText.appendChild(
-        headline
+    text.appendChild(headline);
+    text.appendChild(description);
+
+
+    var add =
+        document.createElement('button');
+
+    add.type =
+        'button';
+
+    add.textContent =
+        '+ Auswahloption';
+
+
+    add.addEventListener(
+        'click',
+        function () {
+
+            field.options.push({
+
+                id:
+                    createId('option'),
+
+                label:
+                    'Neue Option',
+
+                color:
+                    'light-gray'
+
+            });
+
+
+            openState[field.id] =
+                true;
+
+
+            render();
+
+
+            markDirty(
+                'Auswahloption hinzugefügt'
+            );
+
+        }
     );
 
 
-    headText.appendChild(
-        description
-    );
+    head.appendChild(text);
+    head.appendChild(add);
 
-
-    var addOptionButton =
-        createActionButton(
-            '+ Auswahloption',
-            'Neue Auswahloption hinzufügen',
-            function () {
-
-                field.options.push({
-
-                    id:
-                        createId(
-                            'option'
-                        ),
-
-                    label:
-                        'Neue Option',
-
-                    color:
-                        'light-gray'
-
-                });
-
-
-                openState[field.id] =
-                    true;
-
-
-                render();
-
-
-                markDirty(
-                    'Auswahloption hinzugefügt'
-                );
-
-            }
-        );
-
-
-    head.appendChild(
-        headText
-    );
-
-
-    head.appendChild(
-        addOptionButton
-    );
-
-
-    panel.appendChild(
-        head
-    );
+    panel.appendChild(head);
 
 
     var list =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     list.className =
         'option-list';
 
 
-    (field.options || []).forEach(
+    field.options.forEach(
         function (
             option,
             index
         ) {
 
             var row =
-                document.createElement(
-                    'div'
-                );
-
+                document.createElement('div');
 
             row.className =
                 'option-row';
 
 
-            var nameInput =
-                document.createElement(
-                    'input'
-                );
+            var name =
+                document.createElement('input');
 
-
-            nameInput.type =
+            name.type =
                 'text';
 
-
-            nameInput.value =
+            name.value =
                 option.label;
 
 
-            nameInput.addEventListener(
+            name.addEventListener(
                 'input',
                 function () {
 
                     option.label =
-                        nameInput.value;
-
+                        name.value;
 
                     markDirty();
 
@@ -597,7 +632,7 @@ function renderOptions(
             );
 
 
-            var colorSelect =
+            var color =
                 createColorSelect(
 
                     option.color,
@@ -613,169 +648,144 @@ function renderOptions(
 
 
             var actions =
-                document.createElement(
-                    'div'
-                );
-
+                document.createElement('div');
 
             actions.className =
                 'actions';
 
 
-            var upButton =
-                createActionButton(
+            var up =
+                document.createElement('button');
 
-                    '↑',
+            up.type =
+                'button';
 
-                    'Nach oben',
-
-                    function () {
-
-                        if (
-                            moveItem(
-                                field.options,
-                                index,
-                                -1
-                            )
-                        ) {
-
-                            openState[field.id] =
-                                true;
+            up.textContent =
+                '↑';
 
 
-                            render();
+            up.addEventListener(
+                'click',
+                function () {
 
-
-                            markDirty(
-                                'Auswahloption verschoben'
-                            );
-
-                        }
-
-                    }
-
-                );
-
-
-            var downButton =
-                createActionButton(
-
-                    '↓',
-
-                    'Nach unten',
-
-                    function () {
-
-                        if (
-                            moveItem(
-                                field.options,
-                                index,
-                                1
-                            )
-                        ) {
-
-                            openState[field.id] =
-                                true;
-
-
-                            render();
-
-
-                            markDirty(
-                                'Auswahloption verschoben'
-                            );
-
-                        }
-
-                    }
-
-                );
-
-
-            var removeButton =
-                createActionButton(
-
-                    '✕',
-
-                    'Auswahloption entfernen',
-
-                    function () {
-
-                        field.options.splice(
+                    if (
+                        moveItem(
+                            field.options,
                             index,
-                            1
-                        );
-
+                            -1
+                        )
+                    ) {
 
                         openState[field.id] =
                             true;
 
+                        render();
+
+                        markDirty(
+                            'Auswahloption verschoben'
+                        );
+                    }
+
+                }
+            );
+
+
+            var down =
+                document.createElement('button');
+
+            down.type =
+                'button';
+
+            down.textContent =
+                '↓';
+
+
+            down.addEventListener(
+                'click',
+                function () {
+
+                    if (
+                        moveItem(
+                            field.options,
+                            index,
+                            1
+                        )
+                    ) {
+
+                        openState[field.id] =
+                            true;
 
                         render();
 
-
                         markDirty(
-                            'Auswahloption entfernt'
+                            'Auswahloption verschoben'
                         );
-
                     }
 
-                );
-
-
-            actions.appendChild(
-                upButton
+                }
             );
 
 
-            actions.appendChild(
-                downButton
+            var remove =
+                document.createElement('button');
+
+            remove.type =
+                'button';
+
+            remove.textContent =
+                '✕';
+
+
+            remove.addEventListener(
+                'click',
+                function () {
+
+                    field.options.splice(
+                        index,
+                        1
+                    );
+
+
+                    openState[field.id] =
+                        true;
+
+
+                    render();
+
+
+                    markDirty(
+                        'Auswahloption entfernt'
+                    );
+
+                }
             );
 
 
-            actions.appendChild(
-                removeButton
-            );
+            actions.appendChild(up);
+            actions.appendChild(down);
+            actions.appendChild(remove);
 
 
-            row.appendChild(
-                nameInput
-            );
+            row.appendChild(name);
+            row.appendChild(color);
+            row.appendChild(actions);
 
 
-            row.appendChild(
-                colorSelect
-            );
-
-
-            row.appendChild(
-                actions
-            );
-
-
-            list.appendChild(
-                row
-            );
+            list.appendChild(row);
 
         }
     );
 
 
-    panel.appendChild(
-        list
-    );
+    panel.appendChild(list);
 
-
-    container.appendChild(
-        panel
-    );
-
+    container.appendChild(panel);
 }
 
 
-// =========================
-// KATEGORIE RENDERN
-// =========================
+// ======================================================
+// KATEGORIE
+// ======================================================
 
 function renderField(
     field,
@@ -783,29 +793,16 @@ function renderField(
 ) {
 
     var details =
-        document.createElement(
-            'details'
-        );
-
+        document.createElement('details');
 
     details.className =
         'field-card';
 
 
-    if (
-        openState[field.id] !==
-        undefined
-    ) {
-
-        details.open =
-            openState[field.id];
-
-    } else {
-
-        details.open =
-            index === 0;
-
-    }
+    details.open =
+        openState[field.id] !== undefined
+            ? openState[field.id]
+            : index === 0;
 
 
     details.addEventListener(
@@ -819,74 +816,52 @@ function renderField(
     );
 
 
-    // =====================
     // SUMMARY
-    // =====================
 
     var summary =
-        document.createElement(
-            'summary'
-        );
-
+        document.createElement('summary');
 
     summary.className =
         'field-summary';
 
 
-    var summaryLeft =
-        document.createElement(
-            'div'
-        );
+    var left =
+        document.createElement('div');
 
-
-    summaryLeft.className =
+    left.className =
         'summary-left';
 
 
-    var summaryTitle =
-        document.createElement(
-            'div'
-        );
+    var title =
+        document.createElement('div');
 
-
-    summaryTitle.className =
+    title.className =
         'summary-title';
 
-
-    summaryTitle.textContent =
-        field.label ||
-        'Neue Kategorie';
+    title.textContent =
+        field.label;
 
 
-    var summaryMeta =
-        document.createElement(
-            'div'
-        );
+    var meta =
+        document.createElement('div');
 
-
-    summaryMeta.className =
+    meta.className =
         'summary-meta';
 
 
-    var typePill =
-        document.createElement(
-            'span'
-        );
+    var typeBadge =
+        document.createElement('span');
 
-
-    typePill.className =
+    typeBadge.className =
         'meta-pill';
 
-
-    typePill.textContent =
+    typeBadge.textContent =
         getTypeLabel(
             field.type
         );
 
 
-    summaryMeta.appendChild(
-        typePill
-    );
+    meta.appendChild(typeBadge);
 
 
     if (
@@ -894,127 +869,75 @@ function renderField(
         'select'
     ) {
 
-        var countPill =
-            document.createElement(
-                'span'
-            );
+        var count =
+            document.createElement('span');
 
-
-        countPill.className =
+        count.className =
             'meta-pill';
 
-
-        countPill.textContent =
-            (field.options || []).length +
+        count.textContent =
+            field.options.length +
             ' Optionen';
 
-
-        summaryMeta.appendChild(
-            countPill
-        );
-
+        meta.appendChild(count);
     }
 
 
-    summaryLeft.appendChild(
-        summaryTitle
-    );
+    left.appendChild(title);
+    left.appendChild(meta);
 
 
-    summaryLeft.appendChild(
-        summaryMeta
-    );
+    var right =
+        document.createElement('div');
 
-
-    var summaryRight =
-        document.createElement(
-            'div'
-        );
-
-
-    summaryRight.className =
+    right.className =
         'summary-right';
 
 
     var colorDot =
-        document.createElement(
-            'span'
-        );
-
+        document.createElement('span');
 
     colorDot.className =
-        'summary-color color-' +
-        (
-            field.color ||
-            'light-gray'
+        'summary-color';
+
+    colorDot.style.backgroundColor =
+        getCssColor(
+            field.color
         );
 
 
-    colorDot.title =
-        getColorLabel(
-            field.color ||
-            'light-gray'
-        );
+    var arrow =
+        document.createElement('span');
 
-
-    var chevron =
-        document.createElement(
-            'span'
-        );
-
-
-    chevron.className =
+    arrow.className =
         'summary-chevron';
 
-
-    chevron.textContent =
+    arrow.textContent =
         '›';
 
 
-    summaryRight.appendChild(
-        colorDot
-    );
+    right.appendChild(colorDot);
+    right.appendChild(arrow);
 
 
-    summaryRight.appendChild(
-        chevron
-    );
+    summary.appendChild(left);
+    summary.appendChild(right);
 
 
-    summary.appendChild(
-        summaryLeft
-    );
+    details.appendChild(summary);
 
 
-    summary.appendChild(
-        summaryRight
-    );
-
-
-    details.appendChild(
-        summary
-    );
-
-
-    // =====================
     // BODY
-    // =====================
 
     var body =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     body.className =
         'field-body';
 
 
     var grid =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     grid.className =
         'field-grid';
@@ -1023,37 +946,29 @@ function renderField(
     // NAME
 
     var nameGroup =
-        createGroup(
-            'Bezeichnung'
-        );
+        createGroup('Bezeichnung');
 
 
-    var nameInput =
-        document.createElement(
-            'input'
-        );
+    var name =
+        document.createElement('input');
 
-
-    nameInput.type =
+    name.type =
         'text';
 
-
-    nameInput.value =
+    name.value =
         field.label;
 
 
-    nameInput.addEventListener(
+    name.addEventListener(
         'input',
         function () {
 
             field.label =
-                nameInput.value;
+                name.value;
 
-
-            summaryTitle.textContent =
-                field.label ||
+            title.textContent =
+                name.value ||
                 'Neue Kategorie';
-
 
             markDirty();
 
@@ -1061,28 +976,19 @@ function renderField(
     );
 
 
-    nameGroup.appendChild(
-        nameInput
-    );
+    nameGroup.appendChild(name);
 
-
-    grid.appendChild(
-        nameGroup
-    );
+    grid.appendChild(nameGroup);
 
 
     // TYP
 
     var typeGroup =
-        createGroup(
-            'Feldtyp'
-        );
+        createGroup('Feldtyp');
 
 
-    var typeSelect =
-        document.createElement(
-            'select'
-        );
+    var type =
+        document.createElement('select');
 
 
     [
@@ -1098,10 +1004,8 @@ function renderField(
                     'option'
                 );
 
-
             option.value =
                 entry[0];
-
 
             option.textContent =
                 entry[1];
@@ -1114,24 +1018,21 @@ function renderField(
 
                 option.selected =
                     true;
-
             }
 
 
-            typeSelect.appendChild(
-                option
-            );
+            type.appendChild(option);
 
         }
     );
 
 
-    typeSelect.addEventListener(
+    type.addEventListener(
         'change',
         function () {
 
             field.type =
-                typeSelect.value;
+                type.value;
 
 
             if (
@@ -1142,7 +1043,6 @@ function renderField(
 
                 field.options =
                     [];
-
             }
 
 
@@ -1161,14 +1061,9 @@ function renderField(
     );
 
 
-    typeGroup.appendChild(
-        typeSelect
-    );
+    typeGroup.appendChild(type);
 
-
-    grid.appendChild(
-        typeGroup
-    );
+    grid.appendChild(typeGroup);
 
 
     // FARBE
@@ -1181,7 +1076,7 @@ function renderField(
         );
 
 
-    var colorSelect =
+    var color =
         createColorSelect(
 
             field.color,
@@ -1191,194 +1086,162 @@ function renderField(
                 field.color =
                     value;
 
-
-                colorDot.className =
-                    'summary-color color-' +
-                    value;
-
-
-                colorDot.title =
-                    getColorLabel(
-                        value
-                    );
+                colorDot.style.backgroundColor =
+                    getCssColor(value);
 
             }
 
         );
 
 
-    colorGroup.appendChild(
-        colorSelect
-    );
+    colorGroup.appendChild(color);
+
+    grid.appendChild(colorGroup);
 
 
-    grid.appendChild(
-        colorGroup
-    );
+    body.appendChild(grid);
 
 
-    body.appendChild(
-        grid
-    );
-
-
-    // =====================
-    // KATEGORIE-AKTIONEN
-    // =====================
+    // ACTIONS
 
     var fieldActions =
-        document.createElement(
-            'div'
-        );
-
+        document.createElement('div');
 
     fieldActions.className =
         'field-actions';
 
 
-    var moveUp =
-        createActionButton(
+    var up =
+        document.createElement('button');
 
-            '↑ Nach oben',
+    up.type =
+        'button';
 
-            'Kategorie nach oben',
-
-            function () {
-
-                if (
-                    moveItem(
-                        schema.fields,
-                        index,
-                        -1
-                    )
-                ) {
-
-                    openState[field.id] =
-                        true;
+    up.textContent =
+        '↑ Nach oben';
 
 
-                    render();
+    up.addEventListener(
+        'click',
+        function () {
 
-
-                    markDirty(
-                        'Kategorie verschoben'
-                    );
-
-                }
-
-            }
-
-        );
-
-
-    var moveDown =
-        createActionButton(
-
-            '↓ Nach unten',
-
-            'Kategorie nach unten',
-
-            function () {
-
-                if (
-                    moveItem(
-                        schema.fields,
-                        index,
-                        1
-                    )
-                ) {
-
-                    openState[field.id] =
-                        true;
-
-
-                    render();
-
-
-                    markDirty(
-                        'Kategorie verschoben'
-                    );
-
-                }
-
-            }
-
-        );
-
-
-    var remove =
-        createActionButton(
-
-            'Kategorie entfernen',
-
-            'Kategorie entfernen',
-
-            function () {
-
-                var confirmed =
-                    window.confirm(
-
-                        'Kategorie "' +
-                        (
-                            field.label ||
-                            'Neue Kategorie'
-                        ) +
-                        '" wirklich entfernen?\n\n' +
-
-                        'Bereits gespeicherte Kartenwerte bleiben erhalten.'
-
-                    );
-
-
-                if (!confirmed) {
-                    return;
-                }
-
-
-                delete openState[
-                    field.id
-                ];
-
-
-                schema.fields.splice(
+            if (
+                moveItem(
+                    schema.fields,
                     index,
-                    1
-                );
+                    -1
+                )
+            ) {
 
+                openState[field.id] =
+                    true;
 
                 render();
 
-
                 markDirty(
-                    'Kategorie entfernt'
+                    'Kategorie verschoben'
                 );
-
             }
 
-        );
-
-
-    fieldActions.appendChild(
-        moveUp
+        }
     );
 
 
-    fieldActions.appendChild(
-        moveDown
+    var down =
+        document.createElement('button');
+
+    down.type =
+        'button';
+
+    down.textContent =
+        '↓ Nach unten';
+
+
+    down.addEventListener(
+        'click',
+        function () {
+
+            if (
+                moveItem(
+                    schema.fields,
+                    index,
+                    1
+                )
+            ) {
+
+                openState[field.id] =
+                    true;
+
+                render();
+
+                markDirty(
+                    'Kategorie verschoben'
+                );
+            }
+
+        }
     );
 
 
-    fieldActions.appendChild(
-        remove
+    var remove =
+        document.createElement('button');
+
+    remove.type =
+        'button';
+
+    remove.textContent =
+        'Kategorie entfernen';
+
+
+    remove.addEventListener(
+        'click',
+        function () {
+
+            var confirmed =
+                window.confirm(
+                    'Kategorie "' +
+                    field.label +
+                    '" wirklich entfernen?\n\n' +
+                    'Die Werte auf den Karten werden nicht sofort gelöscht.'
+                );
+
+
+            if (!confirmed) {
+                return;
+            }
+
+
+            schema.fields.splice(
+                index,
+                1
+            );
+
+
+            delete openState[
+                field.id
+            ];
+
+
+            render();
+
+
+            markDirty(
+                'Kategorie entfernt'
+            );
+
+        }
     );
+
+
+    fieldActions.appendChild(up);
+    fieldActions.appendChild(down);
+    fieldActions.appendChild(remove);
 
 
     body.appendChild(
         fieldActions
     );
 
-
-    // OPTIONS
 
     if (
         field.type ===
@@ -1389,25 +1252,20 @@ function renderField(
             field,
             body
         );
-
     }
 
 
-    details.appendChild(
-        body
-    );
-
+    details.appendChild(body);
 
     fieldsContainer.appendChild(
         details
     );
-
 }
 
 
-// =========================
+// ======================================================
 // RENDER
-// =========================
+// ======================================================
 
 function render() {
 
@@ -1421,18 +1279,29 @@ function render() {
 
 
     updateSizeInfo();
-
 }
 
 
-// =========================
+// ======================================================
 // VALIDIERUNG
-// =========================
+// ======================================================
 
 function validateSchema() {
 
-    var fieldNames =
-        {};
+    if (
+        !schema.fields ||
+        schema.fields.length === 0
+    ) {
+
+        return {
+            valid: false,
+            message:
+                'Es muss mindestens eine Kategorie vorhanden sein.'
+        };
+    }
+
+
+    var fields = {};
 
 
     for (
@@ -1456,19 +1325,14 @@ function validateSchema() {
                 message:
                     'Eine Kategorie hat keinen Namen.'
             };
-
         }
 
 
-        var normalizedField =
+        var fieldKey =
             field.label.toLowerCase();
 
 
-        if (
-            fieldNames[
-                normalizedField
-            ]
-        ) {
+        if (fields[fieldKey]) {
 
             return {
                 valid: false,
@@ -1476,13 +1340,11 @@ function validateSchema() {
                     'Doppelte Kategorie: ' +
                     field.label
             };
-
         }
 
 
-        fieldNames[
-            normalizedField
-        ] = true;
+        fields[fieldKey] =
+            true;
 
 
         if (
@@ -1490,8 +1352,7 @@ function validateSchema() {
             'select'
         ) {
 
-            var optionNames =
-                {};
+            var options = {};
 
 
             for (
@@ -1508,28 +1369,25 @@ function validateSchema() {
                     option.label.trim();
 
 
-                if (
-                    !option.label
-                ) {
+                if (!option.label) {
 
                     return {
                         valid: false,
                         message:
-                            'Eine Auswahloption in "' +
+                            'Leere Auswahloption in "' +
                             field.label +
-                            '" hat keinen Namen.'
+                            '".'
                     };
-
                 }
 
 
-                var normalizedOption =
+                var optionKey =
                     option.label.toLowerCase();
 
 
                 if (
-                    optionNames[
-                        normalizedOption
+                    options[
+                        optionKey
                     ]
                 ) {
 
@@ -1542,67 +1400,60 @@ function validateSchema() {
                             field.label +
                             '".'
                     };
-
                 }
 
 
-                optionNames[
-                    normalizedOption
-                ] = true;
-
+                options[optionKey] =
+                    true;
             }
-
         }
-
     }
 
 
     return {
         valid: true
     };
-
 }
 
 
-// =========================
+// ======================================================
 // STORAGE SIZE
-// =========================
+// ======================================================
 
-function getEncodedSchema() {
-
-    return ctEncodeSchema(
-        schema
-    );
-
-}
-
-
-function getStorageSize() {
+function calculateProjectedSize() {
 
     var encoded =
-        getEncodedSchema();
+        ctEncodeSchema(schema);
+
+
+    var projected =
+        Object.assign(
+            {},
+            boardSharedData || {}
+        );
 
 
     /*
-     * Wir setzen beim Speichern gleichzeitig
-     * das alte ctConfig auf leer.
+     * Legacy-Konfiguration wird beim
+     * Speichern entfernt.
      */
-    return JSON.stringify({
+    delete projected.ctConfig;
 
-        ctConfig: '',
 
-        ctSchema:
-            encoded
+    projected.ctSchema =
+        encoded;
 
-    }).length;
 
+    return JSON.stringify(
+        projected
+    ).length;
 }
 
 
 function updateSizeInfo() {
 
     var size =
-        getStorageSize();
+        calculateProjectedSize();
 
 
     sizeInfo.textContent =
@@ -1615,49 +1466,39 @@ function updateSizeInfo() {
         'size-info';
 
 
-    if (
-        size > 3500
-    ) {
+    if (size > 3500) {
 
         sizeInfo.classList.add(
             'warning-size'
         );
-
     }
 
 
-    if (
-        size > 3900
-    ) {
+    if (size > 3900) {
 
         sizeInfo.classList.remove(
             'warning-size'
         );
 
-
         sizeInfo.classList.add(
             'error-size'
         );
-
     }
-
 }
 
 
-// =========================
+// ======================================================
 // NEUE KATEGORIE
-// =========================
+// ======================================================
 
 addFieldButton.addEventListener(
     'click',
     function () {
 
-        var newField = {
+        var field = {
 
             id:
-                createId(
-                    'field'
-                ),
+                createId('field'),
 
             label:
                 'Neue Kategorie',
@@ -1675,13 +1516,12 @@ addFieldButton.addEventListener(
 
 
         schema.fields.push(
-            newField
+            field
         );
 
 
-        openState[
-            newField.id
-        ] = true;
+        openState[field.id] =
+            true;
 
 
         render();
@@ -1695,9 +1535,9 @@ addFieldButton.addEventListener(
 );
 
 
-// =========================
-// STANDARDWERTE
-// =========================
+// ======================================================
+// DEFAULTS
+// ======================================================
 
 defaultsButton.addEventListener(
     'click',
@@ -1705,11 +1545,9 @@ defaultsButton.addEventListener(
 
         var confirmed =
             window.confirm(
-
                 'Standardwerte laden?\n\n' +
-
-                'Sie werden erst übernommen, wenn du anschließend speicherst.'
-
+                'Deine aktuellen Änderungen werden ersetzt. ' +
+                'Gespeichert wird erst nach Klick auf "Einstellungen speichern".'
             );
 
 
@@ -1737,129 +1575,76 @@ defaultsButton.addEventListener(
 );
 
 
-// =========================
-// SAVE SUCCESS
-// =========================
+// ======================================================
+// TIMEOUT
+// ======================================================
 
-function finishSaveSuccess(
-    operationId
+function withTimeout(
+    promise,
+    milliseconds
 ) {
 
-    if (
-        operationId !==
-        saveOperation
-    ) {
+    return Promise.race([
 
-        return;
+        promise,
 
-    }
+        new Promise(
+            function (
+                resolve,
+                reject
+            ) {
 
+                setTimeout(
+                    function () {
 
-    isDirty =
-        false;
+                        reject(
+                            new Error(
+                                'timeout'
+                            )
+                        );
 
+                    },
+                    milliseconds
+                );
 
-    setStatus(
-        'Einstellungen gespeichert ✓',
-        'success'
-    );
+            }
+        )
 
-
-    setSaveButtonState(
-        'saved'
-    );
-
-
-    updateSizeInfo();
-
+    ]);
 }
 
 
-// =========================
-// SAVE ERROR
-// =========================
-
-function finishSaveError(
-    operationId,
-    message,
-    error
-) {
-
-    if (
-        operationId !==
-        saveOperation
-    ) {
-
-        return;
-
-    }
-
-
-    if (error) {
-
-        console.error(
-            'CT Fields Settings Save Error:',
-            error
-        );
-
-    }
-
-
-    setStatus(
-        message ||
-        'Fehler beim Speichern.',
-        'error'
-    );
-
-
-    setSaveButtonState(
-        isDirty
-            ? 'dirty'
-            : 'default'
-    );
-
-}
-
-
-// =========================
+// ======================================================
 // SPEICHERN
-// =========================
+// ======================================================
 
 saveButton.addEventListener(
     'click',
     function () {
 
-        // -------------------------
-        // Rechte
-        // -------------------------
+        var context =
+            t.getContext();
+
 
         if (
-            !t.memberCanWriteToModel(
-                'board'
-            )
+            !context.permissions ||
+            context.permissions.board !== 'write'
         ) {
 
             setStatus(
-                'Keine Schreibberechtigung für dieses Board.',
+                'Keine Schreibberechtigung.',
                 'error'
             );
 
             return;
-
         }
 
-
-        // -------------------------
-        // Validierung
-        // -------------------------
 
         var validation =
             validateSchema();
 
 
-        if (
-            !validation.valid
-        ) {
+        if (!validation.valid) {
 
             setStatus(
                 validation.message,
@@ -1867,53 +1652,30 @@ saveButton.addEventListener(
             );
 
             return;
-
         }
 
 
         var encoded =
-            getEncodedSchema();
+            ctEncodeSchema(schema);
 
 
-        var size =
-            JSON.stringify({
-
-                ctConfig: '',
-
-                ctSchema:
-                    encoded
-
-            }).length;
+        var projectedSize =
+            calculateProjectedSize();
 
 
         if (
-            size > 3900
+            projectedSize > 4096
         ) {
 
             setStatus(
-
-                'Die Konfiguration ist zu groß (' +
-                size +
-                ' Zeichen).',
-
+                'Konfiguration zu groß (' +
+                projectedSize +
+                ' / 4096 Zeichen).',
                 'error'
-
             );
 
             return;
-
         }
-
-
-        // -------------------------
-        // UI
-        // -------------------------
-
-        saveOperation++;
-
-
-        var operationId =
-            saveOperation;
 
 
         setSaveButtonState(
@@ -1927,159 +1689,140 @@ saveButton.addEventListener(
         );
 
 
-        /*
-         * Watchdog:
-         *
-         * Selbst falls ein Trello-Promise aus irgendeinem
-         * Grund hängen bleibt, steht der Button nicht
-         * für immer auf "Speichere...".
-         */
-
-        var watchdog =
-            setTimeout(
-                function () {
-
-                    if (
-                        operationId !==
-                        saveOperation
-                    ) {
-
-                        return;
-
-                    }
+        var removeLegacy;
 
 
-                    /*
-                     * Alte Promise-Kette ungültig machen.
-                     */
-                    saveOperation++;
-
-
-                    setStatus(
-                        'Speichern dauert zu lange. Bitte erneut versuchen.',
-                        'error'
-                    );
-
-
-                    setSaveButtonState(
-                        'dirty'
-                    );
-
-                },
-                7000
-            );
-
-
-        /*
-         * WICHTIG:
-         *
-         * Früher hatten wir "ctConfig".
-         * Trello speichert board/shared als EINEN
-         * gemeinsamen JSON-Blob.
-         *
-         * Wir setzen deshalb ctConfig und ctSchema
-         * in EINEM t.set()-Aufruf.
-         *
-         * Dadurch wird ein eventuell noch vorhandenes,
-         * großes ctConfig sofort auf einen leeren String
-         * reduziert, während ctSchema gespeichert wird.
-         */
-
-        t.set(
-            'board',
-            'shared',
-
-            {
-                ctConfig: '',
-
-                ctSchema:
-                    encoded
-            }
-
-        ).then(function () {
-
-            /*
-             * Nach dem Setzen direkt wieder aus Trello lesen.
-             */
-            return t.get(
-                'board',
-                'shared',
-                'ctSchema',
-                null
-            );
-
-        }).then(function (
-            savedSchema
+        if (
+            Object.prototype.hasOwnProperty.call(
+                boardSharedData,
+                'ctConfig'
+            )
         ) {
 
-            clearTimeout(
-                watchdog
-            );
+            removeLegacy =
+                t.remove(
+                    'board',
+                    'shared',
+                    'ctConfig'
+                );
+
+        } else {
+
+            removeLegacy =
+                Promise.resolve();
+        }
 
 
-            if (
-                operationId !==
-                saveOperation
-            ) {
+        var operation =
+            removeLegacy
 
-                return;
+            .then(function () {
 
-            }
-
-
-            if (
-                JSON.stringify(
-                    savedSchema
-                ) !==
-                JSON.stringify(
+                return t.set(
+                    'board',
+                    'shared',
+                    'ctSchema',
                     encoded
-                )
-            ) {
-
-                throw new Error(
-                    'Gespeicherte Konfiguration stimmt nicht mit der lokalen Konfiguration überein.'
                 );
 
-            }
+            })
 
+            .then(function () {
 
-            finishSaveSuccess(
-                operationId
-            );
+                return t.get(
+                    'board',
+                    'shared',
+                    'ctSchema',
+                    null
+                );
 
+            })
 
-            /*
-             * Legacy-Key danach aufräumen.
-             * Ist für den eigentlichen Save nicht mehr kritisch.
-             */
-            t.remove(
-                'board',
-                'shared',
-                'ctConfig'
-            ).catch(function (
-                error
+            .then(function (
+                savedSchema
             ) {
 
-                console.warn(
-                    'Legacy ctConfig konnte nicht entfernt werden:',
-                    error
+                if (
+                    JSON.stringify(
+                        savedSchema
+                    ) !==
+                    JSON.stringify(
+                        encoded
+                    )
+                ) {
+
+                    throw new Error(
+                        'verify-failed'
+                    );
+                }
+
+
+                boardSharedData.ctSchema =
+                    encoded;
+
+
+                delete boardSharedData.ctConfig;
+
+
+                isDirty =
+                    false;
+
+
+                setStatus(
+                    'Einstellungen gespeichert ✓',
+                    'success'
                 );
+
+
+                setSaveButtonState(
+                    'saved'
+                );
+
+
+                updateSizeInfo();
 
             });
 
-        }).catch(function (
-            error
-        ) {
 
-            clearTimeout(
-                watchdog
+        withTimeout(
+            operation,
+            8000
+        )
+
+        .catch(function (error) {
+
+            console.error(
+                'CT Fields Save Error:',
+                error
             );
 
 
-            finishSaveError(
-                operationId,
-                'Fehler beim Speichern.',
-                error
+            if (
+                error.message ===
+                'timeout'
+            ) {
+
+                setStatus(
+                    'Speichern dauert zu lange. Bitte erneut versuchen.',
+                    'error'
+                );
+
+            } else {
+
+                setStatus(
+                    'Fehler beim Speichern: ' +
+                    (
+                        error.message ||
+                        'Unbekannter Fehler'
+                    ),
+                    'error'
+                );
+
+            }
+
+
+            setSaveButtonState(
+                'dirty'
             );
 
         });
@@ -2088,9 +1831,9 @@ saveButton.addEventListener(
 );
 
 
-// =========================
-// INITIAL LADEN
-// =========================
+// ======================================================
+// INITIAL LADEN + RECOVERY
+// ======================================================
 
 setStatus(
     'Lade Einstellungen...',
@@ -2100,43 +1843,117 @@ setStatus(
 
 t.get(
     'board',
-    'shared',
-    'ctSchema',
-    null
+    'shared'
 
 ).then(function (
-    rawSchema
+    shared
 ) {
 
-    schema =
-        ctDecodeSchema(
-            rawSchema
+    boardSharedData =
+        shared || {};
+
+
+    // 1. Neues Schema vorhanden und nicht leer
+
+    if (
+        rawSchemaHasFields(
+            boardSharedData.ctSchema
+        )
+    ) {
+
+        schema =
+            ctDecodeSchema(
+                boardSharedData.ctSchema
+            );
+
+
+        render();
+
+
+        setStatus(
+            'Bereit',
+            'neutral'
         );
+
+
+        setSaveButtonState(
+            'default'
+        );
+
+
+        return;
+    }
+
+
+    // 2. Neues Schema leer/kaputt:
+    //    Versuch, alte ctConfig wiederherzustellen.
+
+    var migrated =
+        migrateLegacyConfig(
+            boardSharedData.ctConfig
+        );
+
+
+    if (migrated) {
+
+        schema =
+            migrated;
+
+
+        render();
+
+
+        isDirty =
+            true;
+
+
+        setStatus(
+            'Alte Konfiguration wiederhergestellt – bitte einmal speichern.',
+            'warning'
+        );
+
+
+        setSaveButtonState(
+            'dirty'
+        );
+
+
+        return;
+    }
+
+
+    // 3. Nichts Wiederherstellbares vorhanden:
+    //    Defaults nur lokal laden.
+
+    schema =
+        ctGetDefaultSchema();
 
 
     render();
 
 
     isDirty =
-        false;
+        true;
 
 
     setStatus(
-        'Bereit',
-        'neutral'
+        'Leere Konfiguration erkannt – Standardwerte wurden geladen. Bitte prüfen und speichern.',
+        'warning'
     );
 
 
     setSaveButtonState(
-        'default'
+        'dirty'
     );
 
-}).catch(function (
+})
+
+.catch(function (
     error
 ) {
 
     console.error(
-        'CT Fields Settings Load Error:',
+        'CT Fields Load Error:',
         error
     );
 
@@ -2149,8 +1966,13 @@ t.get(
 
 
     setStatus(
-        'Gespeicherte Einstellungen konnten nicht geladen werden.',
+        'Konfiguration konnte nicht geladen werden. Standardwerte werden angezeigt.',
         'error'
+    );
+
+
+    setSaveButtonState(
+        'dirty'
     );
 
 });
