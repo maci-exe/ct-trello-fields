@@ -1,52 +1,35 @@
 var t =
     window.TrelloPowerUp.iframe();
 
-
 var fieldsContainer =
-    document.getElementById(
-        'fieldsContainer'
-    );
-
+    document.getElementById('fieldsContainer');
 
 var addFieldButton =
-    document.getElementById(
-        'addFieldButton'
-    );
-
+    document.getElementById('addFieldButton');
 
 var defaultsButton =
-    document.getElementById(
-        'defaultsButton'
-    );
-
+    document.getElementById('defaultsButton');
 
 var saveButton =
-    document.getElementById(
-        'saveButton'
-    );
-
+    document.getElementById('saveButton');
 
 var status =
-    document.getElementById(
-        'status'
-    );
-
+    document.getElementById('status');
 
 var sizeInfo =
-    document.getElementById(
-        'sizeInfo'
-    );
-
+    document.getElementById('sizeInfo');
 
 var schema =
     ctGetDefaultSchema();
 
-
 var counter = 0;
+var isDirty = false;
+var openState = {};
+var saveButtonTimer = null;
 
 
 // =========================
-// ID GENERIEREN
+// HILFSFUNKTIONEN
 // =========================
 
 function createId(prefix) {
@@ -60,573 +43,612 @@ function createId(prefix) {
         '-' +
         counter
     );
-
 }
 
 
-// =========================
-// COLOR SELECT
-// =========================
+function getTypeLabel(type) {
 
-function createColorSelect(
-    currentColor,
-    callback
-) {
+    if (type === 'select') return 'Auswahl';
+    if (type === 'date') return 'Datum';
+    return 'Text';
+}
+
+
+function getColorLabel(colorValue) {
+
+    var match =
+        CT_COLOR_OPTIONS.find(function (item) {
+            return item.value === colorValue;
+        });
+
+    return match ? match.label : colorValue;
+}
+
+
+function setStatus(message, type) {
+
+    status.textContent = message;
+
+    status.className = 'status-pill';
+
+    if (!type) {
+        status.classList.add('status-neutral');
+        return;
+    }
+
+    status.classList.add('status-' + type);
+}
+
+
+function setSaveButtonState(state) {
+
+    clearTimeout(saveButtonTimer);
+
+    saveButton.disabled = false;
+    saveButton.classList.remove('mod-primary');
+
+    if (state === 'saving') {
+        saveButton.textContent = 'Speichere...';
+        saveButton.disabled = true;
+        saveButton.classList.add('mod-primary');
+        return;
+    }
+
+    if (state === 'saved') {
+        saveButton.textContent = 'Gespeichert ✓';
+        saveButton.classList.add('mod-primary');
+
+        saveButtonTimer = setTimeout(function () {
+            setSaveButtonState(isDirty ? 'dirty' : 'default');
+        }, 1800);
+
+        return;
+    }
+
+    if (state === 'dirty') {
+        saveButton.textContent = 'Änderungen speichern';
+        saveButton.classList.add('mod-primary');
+        return;
+    }
+
+    saveButton.textContent = 'Einstellungen speichern';
+    saveButton.classList.add('mod-primary');
+}
+
+
+function markDirty(message) {
+
+    isDirty = true;
+
+    setSaveButtonState('dirty');
+
+    setStatus(
+        message || 'Ungespeicherte Änderungen',
+        'warning'
+    );
+
+    updateSizeInfo();
+}
+
+
+function createColorSelect(currentColor, callback) {
 
     var select =
         document.createElement('select');
 
+    CT_COLOR_OPTIONS.forEach(function (color) {
 
-    CT_COLOR_OPTIONS.forEach(
-        function (color) {
+        var option =
+            document.createElement('option');
 
-            var option =
-                document.createElement('option');
+        option.value = color.value;
+        option.textContent = color.label;
 
-            option.value =
-                color.value;
-
-            option.textContent =
-                color.label;
-
-
-            if (
-                color.value ===
-                currentColor
-            ) {
-
-                option.selected =
-                    true;
-
-            }
-
-
-            select.appendChild(
-                option
-            );
-
+        if (color.value === currentColor) {
+            option.selected = true;
         }
-    );
 
+        select.appendChild(option);
+    });
 
-    select.addEventListener(
-        'change',
-        function () {
-
-            callback(
-                select.value
-            );
-
-            updateSizeInfo();
-
-        }
-    );
-
+    select.addEventListener('change', function () {
+        callback(select.value);
+    });
 
     return select;
-
 }
 
 
-// =========================
-// MOVE
-// =========================
-
-function moveItem(
-    array,
-    index,
-    direction
-) {
+function moveItem(array, index, direction) {
 
     var newIndex =
         index + direction;
 
-
-    if (
-        newIndex < 0 ||
-        newIndex >= array.length
-    ) {
+    if (newIndex < 0 || newIndex >= array.length) {
         return;
     }
 
-
-    var tmp =
-        array[index];
-
-
-    array[index] =
-        array[newIndex];
-
-
-    array[newIndex] =
-        tmp;
-
-
-    render();
-
+    var temp = array[index];
+    array[index] = array[newIndex];
+    array[newIndex] = temp;
 }
 
 
 // =========================
-// OPTION RENDERN
+// OPTIONEN
 // =========================
 
-function renderOptions(
-    field,
-    container
-) {
+function renderOptions(field, container) {
 
-    var title =
+    var panel =
         document.createElement('div');
 
-    title.className =
-        'option-title';
-
-    title.textContent =
-        'Auswahloptionen';
-
-    container.appendChild(title);
+    panel.className =
+        'options-panel';
 
 
-    field.options.forEach(
-        function (option, index) {
+    var head =
+        document.createElement('div');
 
-            var row =
-                document.createElement('div');
+    head.className =
+        'options-head';
 
-            row.className =
-                'option-row';
+    head.innerHTML =
+        '<div>' +
+            '<h3>Auswahloptionen</h3>' +
+            '<p>Diese Optionen gehören zu "' + escapeHtml(field.label || 'Neue Kategorie') + '".</p>' +
+        '</div>';
 
-
-            var name =
-                document.createElement('input');
-
-            name.type =
-                'text';
-
-            name.value =
-                option.label;
-
-
-            name.addEventListener(
-                'input',
-                function () {
-
-                    option.label =
-                        name.value;
-
-                    updateSizeInfo();
-
-                }
-            );
-
-
-            var color =
-                createColorSelect(
-
-                    option.color,
-
-                    function (value) {
-
-                        option.color =
-                            value;
-
-                    }
-
-                );
-
-
-            var actions =
-                document.createElement('div');
-
-            actions.className =
-                'actions';
-
-
-            var up =
-                document.createElement('button');
-
-            up.type = 'button';
-            up.textContent = '↑';
-
-            up.addEventListener(
-                'click',
-                function () {
-
-                    moveItem(
-                        field.options,
-                        index,
-                        -1
-                    );
-
-                }
-            );
-
-
-            var down =
-                document.createElement('button');
-
-            down.type = 'button';
-            down.textContent = '↓';
-
-            down.addEventListener(
-                'click',
-                function () {
-
-                    moveItem(
-                        field.options,
-                        index,
-                        1
-                    );
-
-                }
-            );
-
-
-            var remove =
-                document.createElement('button');
-
-            remove.type = 'button';
-            remove.textContent = '✕';
-
-
-            remove.addEventListener(
-                'click',
-                function () {
-
-                    field.options.splice(
-                        index,
-                        1
-                    );
-
-                    render();
-
-                }
-            );
-
-
-            actions.appendChild(up);
-            actions.appendChild(down);
-            actions.appendChild(remove);
-
-
-            row.appendChild(name);
-            row.appendChild(color);
-            row.appendChild(actions);
-
-
-            container.appendChild(row);
-
-        }
-    );
-
-
-    var add =
+    var addOptionButton =
         document.createElement('button');
 
-    add.type =
-        'button';
+    addOptionButton.type = 'button';
+    addOptionButton.textContent = '+ Auswahloption';
 
-    add.className =
-        'add-option';
+    addOptionButton.addEventListener('click', function () {
 
-    add.textContent =
-        '+ Auswahloption';
+        field.options.push({
+            id: createId('option'),
+            label: 'Neue Option',
+            color: 'light-gray'
+        });
+
+        openState[field.id] = true;
+        render();
+        markDirty('Auswahloption hinzugefügt');
+    });
+
+    head.appendChild(addOptionButton);
+    panel.appendChild(head);
 
 
-    add.addEventListener(
-        'click',
-        function () {
+    var list =
+        document.createElement('div');
 
-            field.options.push({
+    list.className =
+        'option-list';
 
-                id:
-                    createId('option'),
 
-                label:
-                    'Neue Option',
+    field.options.forEach(function (option, index) {
 
-                color:
-                    'light-gray'
+        var row =
+            document.createElement('div');
 
+        row.className =
+            'option-row';
+
+
+        var nameInput =
+            document.createElement('input');
+
+        nameInput.type = 'text';
+        nameInput.value = option.label;
+
+        nameInput.addEventListener('input', function () {
+            option.label = nameInput.value;
+            markDirty();
+        });
+
+
+        var colorSelect =
+            createColorSelect(option.color, function (value) {
+                option.color = value;
+                markDirty();
             });
 
 
+        var actions =
+            document.createElement('div');
+
+        actions.className =
+            'actions';
+
+
+        var up =
+            document.createElement('button');
+
+        up.type = 'button';
+        up.textContent = '↑';
+
+        up.addEventListener('click', function () {
+            moveItem(field.options, index, -1);
+            openState[field.id] = true;
             render();
+            markDirty('Auswahloption verschoben');
+        });
 
-        }
-    );
+
+        var down =
+            document.createElement('button');
+
+        down.type = 'button';
+        down.textContent = '↓';
+
+        down.addEventListener('click', function () {
+            moveItem(field.options, index, 1);
+            openState[field.id] = true;
+            render();
+            markDirty('Auswahloption verschoben');
+        });
 
 
-    container.appendChild(add);
+        var remove =
+            document.createElement('button');
 
+        remove.type = 'button';
+        remove.textContent = '✕';
+
+        remove.addEventListener('click', function () {
+            field.options.splice(index, 1);
+            openState[field.id] = true;
+            render();
+            markDirty('Auswahloption entfernt');
+        });
+
+
+        actions.appendChild(up);
+        actions.appendChild(down);
+        actions.appendChild(remove);
+
+        row.appendChild(nameInput);
+        row.appendChild(colorSelect);
+        row.appendChild(actions);
+
+        list.appendChild(row);
+    });
+
+    panel.appendChild(list);
+    container.appendChild(panel);
 }
 
 
 // =========================
-// FIELD RENDERN
+// KATEGORIE
 // =========================
 
-function renderField(
-    field,
-    index
-) {
+function renderField(field, index) {
 
-    var card =
-        document.createElement('div');
+    var details =
+        document.createElement('details');
 
-    card.className =
+    details.className =
         'field-card';
 
+    details.open =
+        openState[field.id] !== undefined
+            ? openState[field.id]
+            : index === 0;
 
-    var header =
+
+    details.addEventListener('toggle', function () {
+        openState[field.id] = details.open;
+    });
+
+
+    var summary =
+        document.createElement('summary');
+
+    summary.className =
+        'field-summary';
+
+
+    var summaryLeft =
         document.createElement('div');
 
-    header.className =
-        'field-header';
+    summaryLeft.className =
+        'summary-left';
 
 
-    // NAME
+    var summaryTitle =
+        document.createElement('div');
 
-    var name =
+    summaryTitle.className =
+        'summary-title';
+
+    summaryTitle.textContent =
+        field.label || 'Neue Kategorie';
+
+
+    var summaryMeta =
+        document.createElement('div');
+
+    summaryMeta.className =
+        'summary-meta';
+
+
+    var typePill =
+        document.createElement('span');
+
+    typePill.className =
+        'meta-pill';
+
+    typePill.textContent =
+        getTypeLabel(field.type);
+
+    summaryMeta.appendChild(typePill);
+
+
+    if (field.type === 'select') {
+
+        var countPill =
+            document.createElement('span');
+
+        countPill.className =
+            'meta-pill';
+
+        countPill.textContent =
+            (field.options || []).length + ' Optionen';
+
+        summaryMeta.appendChild(countPill);
+    }
+
+
+    summaryLeft.appendChild(summaryTitle);
+    summaryLeft.appendChild(summaryMeta);
+
+
+    var summaryRight =
+        document.createElement('div');
+
+    summaryRight.className =
+        'summary-right';
+
+
+    var colorDot =
+        document.createElement('span');
+
+    colorDot.className =
+        'summary-color color-' + (field.color || 'light-gray');
+
+    colorDot.title =
+        'Feldfarbe: ' + getColorLabel(field.color || 'light-gray');
+
+
+    var chevron =
+        document.createElement('span');
+
+    chevron.className =
+        'summary-chevron';
+
+    chevron.textContent =
+        '›';
+
+    summaryRight.appendChild(colorDot);
+    summaryRight.appendChild(chevron);
+
+
+    summary.appendChild(summaryLeft);
+    summary.appendChild(summaryRight);
+
+    details.appendChild(summary);
+
+
+    var body =
+        document.createElement('div');
+
+    body.className =
+        'field-body';
+
+
+    var grid =
+        document.createElement('div');
+
+    grid.className =
+        'field-grid';
+
+
+    // Bezeichnung
+    var nameGroup =
+        createGroup('Bezeichnung');
+
+    var nameInput =
         document.createElement('input');
 
-    name.type =
-        'text';
+    nameInput.type = 'text';
+    nameInput.value = field.label;
 
-    name.value =
-        field.label;
+    nameInput.addEventListener('input', function () {
+        field.label = nameInput.value;
+        summaryTitle.textContent = field.label || 'Neue Kategorie';
+        markDirty();
+    });
 
-
-    name.addEventListener(
-        'input',
-        function () {
-
-            field.label =
-                name.value;
-
-            updateSizeInfo();
-
-        }
-    );
+    nameGroup.appendChild(nameInput);
+    grid.appendChild(nameGroup);
 
 
-    // TYP
+    // Typ
+    var typeGroup =
+        createGroup('Feldtyp');
 
-    var type =
+    var typeSelect =
         document.createElement('select');
-
 
     [
         ['select', 'Auswahl'],
         ['text', 'Text'],
         ['date', 'Datum']
+    ].forEach(function (entry) {
 
-    ].forEach(
-        function (entry) {
+        var option =
+            document.createElement('option');
 
-            var option =
-                document.createElement('option');
+        option.value = entry[0];
+        option.textContent = entry[1];
 
-            option.value =
-                entry[0];
-
-            option.textContent =
-                entry[1];
-
-
-            if (
-                entry[0] === field.type
-            ) {
-
-                option.selected =
-                    true;
-
-            }
-
-
-            type.appendChild(option);
-
+        if (entry[0] === field.type) {
+            option.selected = true;
         }
-    );
 
+        typeSelect.appendChild(option);
+    });
 
-    type.addEventListener(
-        'change',
-        function () {
+    typeSelect.addEventListener('change', function () {
 
-            field.type =
-                type.value;
+        field.type = typeSelect.value;
 
-
-            if (
-                !Array.isArray(
-                    field.options
-                )
-            ) {
-
-                field.options = [];
-
-            }
-
-
-            render();
-
+        if (!Array.isArray(field.options)) {
+            field.options = [];
         }
-    );
+
+        openState[field.id] = true;
+        render();
+        markDirty('Feldtyp geändert');
+    });
+
+    typeGroup.appendChild(typeSelect);
+    grid.appendChild(typeGroup);
 
 
-    // FARBE
+    // Farbe
+    var colorGroup =
+        createGroup(field.type === 'select' ? 'Fallbackfarbe' : 'Feldfarbe');
 
-    var color =
-        createColorSelect(
+    var colorSelect =
+        createColorSelect(field.color, function (value) {
+            field.color = value;
+            colorDot.className = 'summary-color color-' + value;
+            colorDot.title = 'Feldfarbe: ' + getColorLabel(value);
+            markDirty();
+        });
 
-            field.color,
-
-            function (value) {
-
-                field.color =
-                    value;
-
-            }
-
-        );
+    colorGroup.appendChild(colorSelect);
+    grid.appendChild(colorGroup);
 
 
-    // ACTIONS
+    body.appendChild(grid);
 
-    var actions =
+
+    // Aktionen
+    var fieldActions =
         document.createElement('div');
 
-    actions.className =
-        'actions';
+    fieldActions.className =
+        'field-actions';
 
 
     var up =
         document.createElement('button');
 
     up.type = 'button';
-    up.textContent = '↑';
+    up.textContent = '↑ Nach oben';
 
-
-    up.addEventListener(
-        'click',
-        function () {
-
-            moveItem(
-                schema.fields,
-                index,
-                -1
-            );
-
-        }
-    );
+    up.addEventListener('click', function () {
+        moveItem(schema.fields, index, -1);
+        openState[field.id] = true;
+        render();
+        markDirty('Kategorie verschoben');
+    });
 
 
     var down =
         document.createElement('button');
 
     down.type = 'button';
-    down.textContent = '↓';
+    down.textContent = '↓ Nach unten';
 
-
-    down.addEventListener(
-        'click',
-        function () {
-
-            moveItem(
-                schema.fields,
-                index,
-                1
-            );
-
-        }
-    );
+    down.addEventListener('click', function () {
+        moveItem(schema.fields, index, 1);
+        openState[field.id] = true;
+        render();
+        markDirty('Kategorie verschoben');
+    });
 
 
     var remove =
         document.createElement('button');
 
     remove.type = 'button';
-    remove.textContent = '✕';
+    remove.textContent = 'Kategorie entfernen';
 
+    remove.addEventListener('click', function () {
 
-    remove.addEventListener(
-        'click',
-        function () {
-
-            var confirmed =
-                window.confirm(
-                    'Kategorie "' +
-                    field.label +
-                    '" wirklich entfernen?\n\n' +
-                    'Bereits gespeicherte Kartenwerte bleiben erhalten.'
-                );
-
-
-            if (!confirmed) {
-                return;
-            }
-
-
-            schema.fields.splice(
-                index,
-                1
+        var confirmed =
+            window.confirm(
+                'Kategorie "' +
+                (field.label || 'Neue Kategorie') +
+                '" wirklich entfernen?\n\n' +
+                'Bereits gespeicherte Kartenwerte bleiben erhalten.'
             );
 
-
-            render();
-
+        if (!confirmed) {
+            return;
         }
-    );
+
+        delete openState[field.id];
+        schema.fields.splice(index, 1);
+        render();
+        markDirty('Kategorie entfernt');
+    });
+
+    fieldActions.appendChild(up);
+    fieldActions.appendChild(down);
+    fieldActions.appendChild(remove);
+
+    body.appendChild(fieldActions);
 
 
-    actions.appendChild(up);
-    actions.appendChild(down);
-    actions.appendChild(remove);
-
-
-    header.appendChild(name);
-    header.appendChild(type);
-
-
-    // Bei Auswahlfeldern ist die
-    // Optionsfarbe wichtiger als die Feldfarbe.
-    // Wir lassen sie trotzdem gespeichert,
-    // falls der Typ später geändert wird.
-
-    header.appendChild(color);
-
-    header.appendChild(actions);
-
-
-    card.appendChild(header);
-
-
-    if (
-        field.type === 'select'
-    ) {
-
-        var options =
-            document.createElement('div');
-
-        options.className =
-            'options';
-
-
-        renderOptions(
-            field,
-            options
-        );
-
-
-        card.appendChild(options);
-
+    if (field.type === 'select') {
+        renderOptions(field, body);
     }
 
+    details.appendChild(body);
 
-    fieldsContainer.appendChild(card);
+    fieldsContainer.appendChild(details);
+}
 
+
+// =========================
+// UI HILFSFUNKTIONEN
+// =========================
+
+function createGroup(labelText) {
+
+    var wrapper =
+        document.createElement('div');
+
+    wrapper.className =
+        'group';
+
+    var label =
+        document.createElement('label');
+
+    label.textContent =
+        labelText;
+
+    wrapper.appendChild(label);
+
+    return wrapper;
+}
+
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 
@@ -636,52 +658,12 @@ function renderField(
 
 function render() {
 
-    fieldsContainer.innerHTML =
-        '';
+    fieldsContainer.innerHTML = '';
 
-
-    schema.fields.forEach(
-        renderField
-    );
-
+    schema.fields.forEach(renderField);
 
     updateSizeInfo();
-
 }
-
-
-// =========================
-// NEUE KATEGORIE
-// =========================
-
-addFieldButton.addEventListener(
-    'click',
-    function () {
-
-        schema.fields.push({
-
-            id:
-                createId('field'),
-
-            label:
-                'Neue Kategorie',
-
-            type:
-                'text',
-
-            color:
-                'light-gray',
-
-            options:
-                []
-
-        });
-
-
-        render();
-
-    }
-);
 
 
 // =========================
@@ -692,80 +674,42 @@ function validateSchema() {
 
     var fieldNames = {};
 
+    for (var i = 0; i < schema.fields.length; i++) {
 
-    for (
-        var i = 0;
-        i < schema.fields.length;
-        i++
-    ) {
+        var field = schema.fields[i];
 
-        var field =
-            schema.fields[i];
-
-
-        field.label =
-            field.label.trim();
-
+        field.label = field.label.trim();
 
         if (!field.label) {
-
             return {
                 valid: false,
-                message:
-                    'Eine Kategorie hat keinen Namen.'
+                message: 'Eine Kategorie hat keinen Namen.'
             };
-
         }
-
 
         var normalizedField =
             field.label.toLowerCase();
 
-
-        if (
-            fieldNames[
-                normalizedField
-            ]
-        ) {
-
+        if (fieldNames[normalizedField]) {
             return {
                 valid: false,
-                message:
-                    'Doppelte Kategorie: ' +
-                    field.label
+                message: 'Doppelte Kategorie: ' + field.label
             };
-
         }
 
+        fieldNames[normalizedField] = true;
 
-        fieldNames[
-            normalizedField
-        ] = true;
-
-
-        if (
-            field.type === 'select'
-        ) {
+        if (field.type === 'select') {
 
             var optionNames = {};
 
+            for (var x = 0; x < field.options.length; x++) {
 
-            for (
-                var x = 0;
-                x < field.options.length;
-                x++
-            ) {
+                var option = field.options[x];
 
-                var option =
-                    field.options[x];
-
-
-                option.label =
-                    option.label.trim();
-
+                option.label = option.label.trim();
 
                 if (!option.label) {
-
                     return {
                         valid: false,
                         message:
@@ -773,20 +717,12 @@ function validateSchema() {
                             field.label +
                             '" hat keinen Namen.'
                     };
-
                 }
-
 
                 var normalizedOption =
                     option.label.toLowerCase();
 
-
-                if (
-                    optionNames[
-                        normalizedOption
-                    ]
-                ) {
-
+                if (optionNames[normalizedOption]) {
                     return {
                         valid: false,
                         message:
@@ -796,25 +732,14 @@ function validateSchema() {
                             field.label +
                             '".'
                     };
-
                 }
 
-
-                optionNames[
-                    normalizedOption
-                ] = true;
-
+                optionNames[normalizedOption] = true;
             }
-
         }
-
     }
 
-
-    return {
-        valid: true
-    };
-
+    return { valid: true };
 }
 
 
@@ -825,18 +750,11 @@ function validateSchema() {
 function getStorageSize() {
 
     var encoded =
-        ctEncodeSchema(
-            schema
-        );
-
+        ctEncodeSchema(schema);
 
     return JSON.stringify({
-
-        ctSchema:
-            encoded
-
+        ctSchema: encoded
     }).length;
-
 }
 
 
@@ -845,189 +763,139 @@ function updateSizeInfo() {
     var size =
         getStorageSize();
 
-
     sizeInfo.textContent =
         'Konfigurationsgröße: ' +
         size +
         ' / ca. 4096 Zeichen';
 
+    sizeInfo.className = 'size-info';
+
+    if (size > 3600) {
+        sizeInfo.classList.add('warning-size');
+    }
+
+    if (size > 3900) {
+        sizeInfo.classList.remove('warning-size');
+        sizeInfo.classList.add('error-size');
+    }
 }
 
 
 // =========================
-// SPEICHERN
+// EVENTS
 // =========================
 
-saveButton.addEventListener(
-    'click',
-    function () {
+addFieldButton.addEventListener('click', function () {
 
-        if (
-            !t.memberCanWriteToModel(
-                'board'
-            )
-        ) {
+    var newField = {
+        id: createId('field'),
+        label: 'Neue Kategorie',
+        type: 'text',
+        color: 'light-gray',
+        options: []
+    };
 
-            status.className =
-                'error';
+    schema.fields.push(newField);
+    openState[newField.id] = true;
 
-            status.textContent =
-                'Keine Schreibberechtigung.';
-
-            return;
-
-        }
+    render();
+    markDirty('Kategorie hinzugefügt');
+});
 
 
-        var validation =
-            validateSchema();
+defaultsButton.addEventListener('click', function () {
 
+    var confirmed =
+        window.confirm(
+            'Standardwerte laden?\n\n' +
+            'Sie werden erst übernommen, wenn du anschließend speicherst.'
+        );
 
-        if (!validation.valid) {
-
-            status.className =
-                'error';
-
-            status.textContent =
-                validation.message;
-
-            return;
-
-        }
-
-
-        var encoded =
-            ctEncodeSchema(
-                schema
-            );
-
-
-        var size =
-            JSON.stringify({
-
-                ctSchema:
-                    encoded
-
-            }).length;
-
-
-        // Etwas Reserve lassen,
-        // statt exakt bis 4096 zu gehen.
-
-        if (size > 3900) {
-
-            status.className =
-                'error';
-
-            status.textContent =
-                'Die Konfiguration ist zu groß. Bitte einige Kategorien oder Optionen entfernen.';
-
-            return;
-
-        }
-
-
-        status.className = '';
-
-        status.textContent =
-            'Speichere...';
-
-
-        return t.set(
-
-            'board',
-
-            'shared',
-
-            'ctSchema',
-
-            encoded
-
-        ).then(function () {
-
-            status.className =
-                'success';
-
-            status.textContent =
-                'Einstellungen gespeichert.';
-
-            updateSizeInfo();
-
-        }).catch(function (error) {
-
-            console.error(error);
-
-
-            status.className =
-                'error';
-
-            status.textContent =
-                'Fehler beim Speichern.';
-
-        });
-
+    if (!confirmed) {
+        return;
     }
-);
+
+    schema = ctGetDefaultSchema();
+    openState = {};
+
+    render();
+    markDirty('Standardwerte geladen – noch nicht gespeichert');
+});
 
 
-// =========================
-// DEFAULTS
-// =========================
+saveButton.addEventListener('click', function () {
 
-defaultsButton.addEventListener(
-    'click',
-    function () {
-
-        var confirmed =
-            window.confirm(
-                'Standardwerte laden?\n\n' +
-                'Sie werden erst übernommen, wenn du anschließend speicherst.'
-            );
-
-
-        if (!confirmed) {
-            return;
-        }
-
-
-        schema =
-            ctGetDefaultSchema();
-
-
-        render();
-
-
-        status.className = '';
-
-        status.textContent =
-            'Standardwerte geladen – noch nicht gespeichert.';
-
+    if (!t.memberCanWriteToModel('board')) {
+        setStatus('Keine Schreibberechtigung.', 'error');
+        return;
     }
-);
+
+    var validation =
+        validateSchema();
+
+    if (!validation.valid) {
+        setStatus(validation.message, 'error');
+        return;
+    }
+
+    var encoded =
+        ctEncodeSchema(schema);
+
+    var size =
+        JSON.stringify({
+            ctSchema: encoded
+        }).length;
+
+    if (size > 3900) {
+        setStatus(
+            'Die Konfiguration ist zu groß. Bitte Kategorien oder Optionen reduzieren.',
+            'error'
+        );
+        return;
+    }
+
+    setSaveButtonState('saving');
+    setStatus('Speichere Einstellungen...', 'info');
+
+    return t.set(
+        'board',
+        'shared',
+        'ctSchema',
+        encoded
+    ).then(function () {
+
+        isDirty = false;
+
+        setStatus('Einstellungen gespeichert.', 'success');
+        setSaveButtonState('saved');
+        updateSizeInfo();
+
+    }).catch(function (error) {
+
+        console.error(error);
+
+        setStatus('Fehler beim Speichern.', 'error');
+        setSaveButtonState(isDirty ? 'dirty' : 'default');
+    });
+});
 
 
 // =========================
-// LADEN
+// INITIAL LADEN
 // =========================
 
 t.get(
-
     'board',
-
     'shared',
-
     'ctSchema',
-
     null
-
 ).then(function (rawSchema) {
 
     schema =
-        ctDecodeSchema(
-            rawSchema
-        );
-
+        ctDecodeSchema(rawSchema);
 
     render();
-
+    updateSizeInfo();
+    setStatus('Bereit', 'neutral');
+    setSaveButtonState('default');
 });
