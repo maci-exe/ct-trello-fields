@@ -32,7 +32,7 @@ window.TrelloPowerUp.initialize({
                 if (data.adjutant) {
                     badges.push({
                         text: 'Adjutant: ' + data.adjutant,
-                        color: 'green'
+                        color: getAdjutantColor(data.adjutant)
                     });
                 }
 
@@ -91,6 +91,7 @@ function getRankColor(rank) {
 
     var colors = {
         'Private First Class': 'light-gray',
+
         'Lance Corporal': 'purple',
         'Corporal': 'purple',
 
@@ -101,7 +102,10 @@ function getRankColor(rank) {
         'Lieutenant': 'blue',
         'First Lieutenant': 'blue',
 
-        'Captain': 'orange'
+        'Captain': 'red',
+        'Major': 'orange',
+        'Commander': 'yellow',
+        'High General': 'purple'
     };
 
     return colors[rank] || 'light-gray';
@@ -118,7 +122,7 @@ function getPositionColor(position) {
         'Mannschaft': 'purple',
         'Unteroffizierebene': 'green',
         'Führungsebene': 'blue',
-        'Hohe Führungsebene': 'orange'
+        'Hohe Führungsebene': 'red'
     };
 
     return colors[position] || 'light-gray';
@@ -159,3 +163,28 @@ function formatDate(dateString) {
 
     return parts[2] + '.' + parts[1] + '.' + parts[0];
 }
+
+// =========================
+// ADJUDATEN
+// =========================
+
+function getAdjutantColor(adjutant) {
+
+    var colors = {
+        '5th': 'sky',
+        '41st': 'green',
+        '104th': 'light-gray',
+        '187th': 'purple',
+        '212th': 'orange',
+        '501st': 'blue',
+
+        'CTP': 'lime',
+        'GMC': 'purple',
+        'RMC': 'red',
+        'SO': 'sky',
+        'ST': 'red'
+    };
+
+    return colors[adjutant] || 'light-gray';
+}
+
