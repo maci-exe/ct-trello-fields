@@ -5,32 +5,25 @@ window.TrelloPowerUp.initialize({
     // BOARD SETTINGS BUTTON
     // =========================
 
-    'board-buttons': function (t) {
+        'board-buttons': function (t) {
 
-        return [{
-            text: 'CT Fields',
-            condition: 'admin',
+            return [{
+                text: 'CT Fields',
+                condition: 'admin',
 
-            callback: function (t) {
+                callback: function (t) {
 
-                return t.modal({
+            return t.modal({
+                title: 'CT Fields – Einstellungen',
+                url: t.signUrl('./settings.html'),
+                height: 720,
+                fullscreen: false
+            });
 
-                    title:
-                        'CT Fields – Einstellungen',
+        }
+    }];
 
-                    url:
-                        t.signUrl('./settings.html'),
-
-                    height: 750,
-
-                    fullscreen: false
-
-                });
-
-            }
-        }];
-
-    },
+},
 
 
     // =========================
