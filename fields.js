@@ -2,139 +2,57 @@ var t =
     window.TrelloPowerUp.iframe();
 
 
-var unit =
-    document.getElementById('unit');
-
-var rank =
-    document.getElementById('rank');
-
-var position =
-    document.getElementById('position');
-
-var adjutant =
-    document.getElementById('adjutant');
-
-var promotion =
-    document.getElementById('promotion');
-
-var testUntil =
-    document.getElementById('testUntil');
-
-var ctId =
-    document.getElementById('ctId');
+var fieldsGrid =
+    document.getElementById('fieldsGrid');
 
 var status =
     document.getElementById('status');
 
 
-var loaded = false;
+var schema = null;
+
+var storedValues = {};
+
 var canWrite = false;
 
-var config =
-    ctGetDefaultConfig();
+var loaded = false;
 
 
 // =========================
-// DROPDOWN BAUEN
+// KARTENDATEN AUSLESEN
 // =========================
 
-function buildSelect(
-    element,
-    items,
-    emptyText
-) {
+function extractValues(data) {
 
-    element.innerHTML = '';
+    if (
+        data &&
+        data.v === 2 &&
+        data.values
+    ) {
 
-
-    var empty =
-        document.createElement('option');
-
-    empty.value = '';
-    empty.textContent = emptyText;
-
-    element.appendChild(empty);
-
-
-    items.forEach(function (item) {
-
-        var option =
-            document.createElement('option');
-
-        option.value =
-            item.id;
-
-        option.textContent =
-            item.label;
-
-        element.appendChild(option);
-
-    });
-
-}
-
-
-// =========================
-// ALTEN / NEUEN WERT SETZEN
-// =========================
-
-function setStoredValue(
-    element,
-    section,
-    storedValue
-) {
-
-    if (!storedValue) {
-
-        element.value = '';
-        return;
-
-    }
-
-
-    var item =
-        ctFindItem(
-            config,
-            section,
-            storedValue
+        return Object.assign(
+            {},
+            data.values
         );
 
-
-    if (item) {
-
-        element.value =
-            item.id;
-
-        return;
-
     }
 
 
-    // Falls eine Option später gelöscht wurde,
-    // verlieren wir den gespeicherten Wert nicht.
+    // Alte Testdaten übernehmen.
+    return Object.assign(
+        {},
+        data || {}
+    );
 
-    var legacy =
-        document.createElement('option');
-
-    legacy.value =
-        storedValue;
-
-    legacy.textContent =
-        storedValue + ' (Altwert)';
-
-    element.appendChild(legacy);
-
-    element.value =
-        storedValue;
 }
 
 
 // =========================
-// FARBE
+// FARBE SETZEN
 // =========================
 
-function setColor(
-    element,
+function setControlColor(
+    control,
     color
 ) {
 
@@ -151,125 +69,21 @@ function setColor(
     ];
 
 
-    colors.forEach(function (value) {
+    colors.forEach(
+        function (item) {
 
-        element.classList.remove(
-            'color-' + value
-        );
+            control.classList.remove(
+                'color-' + item
+            );
 
-    });
+        }
+    );
 
 
-    element.classList.add(
+    control.classList.add(
         'color-' +
         (color || 'light-gray')
     );
-
-}
-
-
-// =========================
-// FARBEN AKTUALISIEREN
-// =========================
-
-function updateColors() {
-
-    setColor(
-        unit,
-        ctGetChoiceColor(
-            config,
-            'units',
-            unit.value
-        )
-    );
-
-
-    setColor(
-        rank,
-        ctGetChoiceColor(
-            config,
-            'ranks',
-            rank.value
-        )
-    );
-
-
-    setColor(
-        position,
-        ctGetChoiceColor(
-            config,
-            'positions',
-            position.value
-        )
-    );
-
-
-    setColor(
-        adjutant,
-        ctGetChoiceColor(
-            config,
-            'adjutants',
-            adjutant.value
-        )
-    );
-
-
-    setColor(
-        promotion,
-        promotion.value
-            ? config.fixedColors.promotion
-            : 'light-gray'
-    );
-
-
-    setColor(
-        testUntil,
-        testUntil.value
-            ? config.fixedColors.testUntil
-            : 'light-gray'
-    );
-
-
-    setColor(
-        ctId,
-        ctId.value
-            ? config.fixedColors.ctId
-            : 'light-gray'
-    );
-
-}
-
-
-// =========================
-// DATEN HOLEN
-// =========================
-
-function getFormData() {
-
-    return {
-
-        unit:
-            unit.value,
-
-        rank:
-            rank.value,
-
-        position:
-            position.value,
-
-        adjutant:
-            adjutant.value,
-
-        promotion:
-            promotion.value,
-
-        testUntil:
-            testUntil.value,
-
-        ctId:
-            ctId.value.trim()
-
-    };
 
 }
 
@@ -288,8 +102,6 @@ function saveData() {
     }
 
 
-    updateColors();
-
     status.textContent =
         'Speichere...';
 
@@ -302,14 +114,12 @@ function saveData() {
 
         'characterData',
 
-        getFormData()
+        {
+            v: 2,
+            values: storedValues
+        }
 
-    ).then(function () {
-
-        status.textContent =
-            'Gespeichert';
-
-    }).catch(function (error) {
+    ).catch(function (error) {
 
         console.error(error);
 
@@ -322,63 +132,283 @@ function saveData() {
 
 
 // =========================
-// EVENTS
+// SELECT ERSTELLEN
 // =========================
 
-unit.addEventListener(
-    'change',
-    saveData
-);
+function createSelect(
+    field,
+    currentValue
+) {
 
-rank.addEventListener(
-    'change',
-    saveData
-);
-
-position.addEventListener(
-    'change',
-    saveData
-);
-
-adjutant.addEventListener(
-    'change',
-    saveData
-);
-
-promotion.addEventListener(
-    'change',
-    saveData
-);
-
-testUntil.addEventListener(
-    'change',
-    saveData
-);
-
-ctId.addEventListener(
-    'change',
-    saveData
-);
-
-ctId.addEventListener(
-    'input',
-    updateColors
-);
+    var select =
+        document.createElement('select');
 
 
-ctId.addEventListener(
-    'keydown',
-    function (event) {
+    var empty =
+        document.createElement('option');
 
-        if (event.key === 'Enter') {
+    empty.value = '';
 
-            event.preventDefault();
-            ctId.blur();
+    empty.textContent =
+        '-- Keine Auswahl --';
+
+    select.appendChild(empty);
+
+
+    (field.options || []).forEach(
+        function (option) {
+
+            var element =
+                document.createElement('option');
+
+            element.value =
+                option.id;
+
+            element.textContent =
+                option.label;
+
+            select.appendChild(element);
 
         }
+    );
+
+
+    var normalized =
+        ctNormalizeValue(
+            field,
+            currentValue
+        );
+
+
+    // Falls alter Wert existiert,
+    // aber die Option inzwischen gelöscht wurde.
+    if (
+        normalized &&
+        !field.options.some(
+            function (option) {
+                return option.id === normalized;
+            }
+        )
+    ) {
+
+        var legacy =
+            document.createElement('option');
+
+        legacy.value =
+            normalized;
+
+        legacy.textContent =
+            normalized + ' (Altwert)';
+
+        select.appendChild(legacy);
 
     }
-);
+
+
+    select.value =
+        normalized || '';
+
+
+    setControlColor(
+
+        select,
+
+        select.value
+            ? ctGetValueColor(
+                field,
+                select.value
+            )
+            : 'light-gray'
+
+    );
+
+
+    select.addEventListener(
+        'change',
+        function () {
+
+            storedValues[field.id] =
+                select.value;
+
+
+            setControlColor(
+
+                select,
+
+                select.value
+                    ? ctGetValueColor(
+                        field,
+                        select.value
+                    )
+                    : 'light-gray'
+
+            );
+
+
+            saveData();
+
+        }
+    );
+
+
+    return select;
+
+}
+
+
+// =========================
+// TEXT / DATUM ERSTELLEN
+// =========================
+
+function createInput(
+    field,
+    currentValue
+) {
+
+    var input =
+        document.createElement('input');
+
+
+    input.type =
+        field.type === 'date'
+            ? 'date'
+            : 'text';
+
+
+    input.value =
+        currentValue || '';
+
+
+    setControlColor(
+
+        input,
+
+        input.value
+            ? field.color
+            : 'light-gray'
+
+    );
+
+
+    input.addEventListener(
+        'input',
+        function () {
+
+            setControlColor(
+
+                input,
+
+                input.value
+                    ? field.color
+                    : 'light-gray'
+
+            );
+
+        }
+    );
+
+
+    input.addEventListener(
+        'change',
+        function () {
+
+            storedValues[field.id] =
+                input.value.trim();
+
+
+            saveData();
+
+        }
+    );
+
+
+    if (field.type === 'text') {
+
+        input.addEventListener(
+            'keydown',
+            function (event) {
+
+                if (
+                    event.key === 'Enter'
+                ) {
+
+                    event.preventDefault();
+
+                    input.blur();
+
+                }
+
+            }
+        );
+
+    }
+
+
+    return input;
+
+}
+
+
+// =========================
+// FELD RENDERN
+// =========================
+
+function renderField(field) {
+
+    var wrapper =
+        document.createElement('div');
+
+    wrapper.className =
+        'field';
+
+
+    var label =
+        document.createElement('label');
+
+    label.textContent =
+        field.label;
+
+
+    var currentValue =
+        storedValues[field.id] || '';
+
+
+    var control;
+
+
+    if (
+        field.type === 'select'
+    ) {
+
+        control =
+            createSelect(
+                field,
+                currentValue
+            );
+
+    } else {
+
+        control =
+            createInput(
+                field,
+                currentValue
+            );
+
+    }
+
+
+    control.disabled =
+        !canWrite;
+
+
+    wrapper.appendChild(label);
+
+    wrapper.appendChild(control);
+
+
+    fieldsGrid.appendChild(wrapper);
+
+}
 
 
 // =========================
@@ -389,8 +419,11 @@ t.render(function () {
 
     loaded = false;
 
+
     canWrite =
-        t.memberCanWriteToModel('card');
+        t.memberCanWriteToModel(
+            'card'
+        );
 
 
     return Promise.all([
@@ -398,7 +431,7 @@ t.render(function () {
         t.get(
             'board',
             'shared',
-            'ctConfig',
+            'ctSchema',
             null
         ),
 
@@ -411,93 +444,25 @@ t.render(function () {
 
     ]).then(function (values) {
 
-        config =
-            ctNormalizeConfig(
+        schema =
+            ctDecodeSchema(
                 values[0]
             );
 
 
-        var data =
-            values[1] || {};
+        storedValues =
+            extractValues(
+                values[1]
+            );
 
 
-        // Dropdowns dynamisch bauen
+        fieldsGrid.innerHTML =
+            '';
 
-        buildSelect(
-            unit,
-            config.units,
-            '-- Keine Untereinheit --'
+
+        schema.fields.forEach(
+            renderField
         );
-
-        buildSelect(
-            rank,
-            config.ranks,
-            '-- Kein Rang --'
-        );
-
-        buildSelect(
-            position,
-            config.positions,
-            '-- Keine Position --'
-        );
-
-        buildSelect(
-            adjutant,
-            config.adjutants,
-            '-- Kein Adjutant --'
-        );
-
-
-        // gespeicherte Daten laden
-
-        setStoredValue(
-            unit,
-            'units',
-            data.unit
-        );
-
-        setStoredValue(
-            rank,
-            'ranks',
-            data.rank
-        );
-
-        setStoredValue(
-            position,
-            'positions',
-            data.position
-        );
-
-        setStoredValue(
-            adjutant,
-            'adjutants',
-            data.adjutant
-        );
-
-
-        promotion.value =
-            data.promotion || '';
-
-        testUntil.value =
-            data.testUntil || '';
-
-        ctId.value =
-            data.ctId || '';
-
-
-        updateColors();
-
-
-        document
-            .querySelectorAll(
-                'select, input'
-            )
-            .forEach(function (control) {
-
-                control.disabled =
-                    !canWrite;
-
-            });
 
 
         status.textContent =
