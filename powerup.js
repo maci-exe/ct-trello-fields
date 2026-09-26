@@ -144,6 +144,19 @@ window.TrelloPowerUp.initialize({
 
                 }
             );
+                    if (
+                        hasPlausibilityError(
+                            schema,
+                            storedValues
+                )
+                    ) {
+
+                badges.push({
+                    text: '⚠ Plausibilitätsfehler',
+                    color: 'yellow'
+            });
+
+        }
 
 
             return badges;
@@ -206,4 +219,106 @@ function formatDate(dateString) {
         parts[0]
     );
 
+}
+function hasPlausibilityError(
+    schema,
+    storedValues
+) {
+
+    var rules = {
+
+        'private-first-class':
+            'mannschaft',
+
+        'lance-corporal':
+            'mannschaft',
+
+        'corporal':
+            'mannschaft',
+
+
+        'sergeant':
+            'unteroffizierebene',
+
+        'staff-sergeant':
+            'unteroffizierebene',
+
+        'sergeant-major':
+            'unteroffizierebene',
+
+
+        'lieutenant':
+            'fuehrungsebene',
+
+        'first-lieutenant':
+            'fuehrungsebene',
+
+
+        'captain':
+            'hohe-fuehrungsebene',
+
+        'major':
+            'hohe-fuehrungsebene',
+
+        'commander':
+            'hohe-fuehrungsebene'
+
+    };
+
+
+    var rankField =
+        schema.fields.find(
+            function (field) {
+                return field.id === 'rank';
+            }
+        );
+
+
+    var positionField =
+        schema.fields.find(
+            function (field) {
+                return field.id === 'position';
+            }
+        );
+
+
+    if (
+        !rankField ||
+        !positionField
+    ) {
+
+        return false;
+    }
+
+
+    var rank =
+        ctNormalizeValue(
+            rankField,
+            storedValues.rank || ''
+        );
+
+
+    var position =
+        ctNormalizeValue(
+            positionField,
+            storedValues.position || ''
+        );
+
+
+    // Kein Rang gesetzt
+    if (!rank) {
+        return false;
+    }
+
+
+    // Rang gehört nicht zu unseren Regeln
+    if (!rules[rank]) {
+        return false;
+    }
+
+
+    return (
+        position !==
+        rules[rank]
+    );
 }
