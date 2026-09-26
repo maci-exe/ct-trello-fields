@@ -2,19 +2,21 @@ var t =
     window.TrelloPowerUp.iframe();
 
 
-// =========================
+// ======================================================
 // ELEMENTE
-// =========================
+// ======================================================
 
 var fieldsGrid =
     document.getElementById(
         'fieldsGrid'
     );
 
+
 var plausibilityWarning =
     document.getElementById(
         'plausibilityWarning'
     );
+
 
 var status =
     document.getElementById(
@@ -22,13 +24,15 @@ var status =
     );
 
 
-// =========================
+// ======================================================
 // STATE
-// =========================
+// ======================================================
 
 var schema = null;
 
 var storedValues = {};
+
+var currentListName = '';
 
 var canWrite = false;
 
@@ -37,9 +41,9 @@ var loaded = false;
 var statusTimer = null;
 
 
-// =========================
-// KARTENDATEN AUSLESEN
-// =========================
+// ======================================================
+// KARTENDATEN
+// ======================================================
 
 function extractValues(data) {
 
@@ -53,10 +57,10 @@ function extractValues(data) {
             {},
             data.values
         );
+
     }
 
 
-    // Kompatibilität mit alten Testdaten
     return Object.assign(
         {},
         data || {}
@@ -64,18 +68,21 @@ function extractValues(data) {
 }
 
 
-// =========================
-// FIELD AUS SCHEMA HOLEN
-// =========================
+// ======================================================
+// FIELD FINDEN
+// ======================================================
 
 function getField(fieldId) {
 
     if (
         !schema ||
-        !Array.isArray(schema.fields)
+        !Array.isArray(
+            schema.fields
+        )
     ) {
 
         return null;
+
     }
 
 
@@ -83,7 +90,8 @@ function getField(fieldId) {
         function (field) {
 
             return (
-                field.id === fieldId
+                field.id ===
+                fieldId
             );
 
         }
@@ -91,23 +99,46 @@ function getField(fieldId) {
 }
 
 
-// =========================
+// ======================================================
+// LISTENNAME NORMALISIEREN
+// ======================================================
+
+function normalizeListName(name) {
+
+    return String(name || '')
+
+        .replace(
+            /↓/g,
+            ''
+        )
+
+        .replace(
+            /\s+/g,
+            ' '
+        )
+
+        .trim()
+
+        .toLowerCase();
+}
+
+
+// ======================================================
 // PLAUSIBILITÄTSCHECK
-// =========================
+// ======================================================
 
 function checkPlausibility() {
 
     /*
-     * Es werden AUSSCHLIESSLICH
-     * diese Ränge geprüft.
+     * RANG -> POSITION
      *
-     * Alle anderen Ränge werden
-     * komplett ignoriert.
+     * NUR diese Ränge werden geprüft.
      */
 
-    var rules = {
+    var positionRules = {
 
         // Mannschaftsebene
+
         'private-first-class':
             'mannschaft',
 
@@ -119,6 +150,7 @@ function checkPlausibility() {
 
 
         // Unteroffiziersebene
+
         'sergeant':
             'unteroffizierebene',
 
@@ -130,6 +162,7 @@ function checkPlausibility() {
 
 
         // Führungsebene
+
         'lieutenant':
             'fuehrungsebene',
 
@@ -138,6 +171,7 @@ function checkPlausibility() {
 
 
         // Hohe Führungsebene
+
         'captain':
             'hohe-fuehrungsebene',
 
@@ -150,36 +184,66 @@ function checkPlausibility() {
     };
 
 
-    var rankField =
-        getField('rank');
-
-    var positionField =
-        getField('position');
-
-
     /*
-     * Falls Rang oder Position als
-     * Kategorie irgendwann gelöscht
-     * wurde, gibt es keinen Check.
+     * TRELLO-LISTE -> RANG
      */
 
-    if (
-        !rankField ||
-        !positionField
-    ) {
+    var listRules = {
+
+        'private first class':
+            'private-first-class',
+
+        'lance corporal':
+            'lance-corporal',
+
+        'corporal':
+            'corporal',
+
+        'sergeant':
+            'sergeant',
+
+        'staff sergeant':
+            'staff-sergeant',
+
+        'sergeant major':
+            'sergeant-major',
+
+        'lieutenant':
+            'lieutenant',
+
+        'first lieutenant':
+            'first-lieutenant',
+
+        'captain':
+            'captain',
+
+        'major':
+            'major'
+
+    };
+
+
+    var rankField =
+        getField(
+            'rank'
+        );
+
+
+    var positionField =
+        getField(
+            'position'
+        );
+
+
+    if (!rankField) {
 
         plausibilityWarning.style.display =
             'none';
 
         return;
+
     }
 
-
-    /*
-     * Alte gespeicherte Namen werden
-     * ebenfalls auf die internen IDs
-     * normalisiert.
-     */
 
     var rank =
         ctNormalizeValue(
@@ -188,15 +252,9 @@ function checkPlausibility() {
         );
 
 
-    var position =
-        ctNormalizeValue(
-            positionField,
-            storedValues.position || ''
-        );
-
-
     /*
-     * Kein Rang gewählt
+     * Kein Rang:
+     * kein Plausibilitätsfehler.
      */
 
     if (!rank) {
@@ -205,60 +263,94 @@ function checkPlausibility() {
             'none';
 
         return;
+
     }
 
 
     /*
-     * Rang ist nicht Bestandteil
-     * unserer Regeln:
-     *
-     * z.B. High General oder
-     * irgendein später angelegter Rang.
-     *
-     * -> komplett ignorieren.
+     * Alle anderen/custom Ränge
+     * komplett ignorieren.
      */
 
-    if (!rules[rank]) {
+    if (!positionRules[rank]) {
 
         plausibilityWarning.style.display =
             'none';
 
         return;
+
     }
 
 
-    var expectedPosition =
-        rules[rank];
+    // ==================================================
+    // 1. RANG <-> POSITION
+    // ==================================================
+
+    if (positionField) {
+
+        var position =
+            ctNormalizeValue(
+                positionField,
+                storedValues.position || ''
+            );
 
 
-    /*
-     * KORREKT
-     */
+        if (
+            position !==
+            positionRules[rank]
+        ) {
+
+            plausibilityWarning.style.display =
+                'block';
+
+            return;
+
+        }
+
+    }
+
+
+    // ==================================================
+    // 2. TRELLO-LISTE <-> RANG
+    // ==================================================
+
+    var normalizedList =
+        normalizeListName(
+            currentListName
+        );
+
+
+    var expectedRank =
+        listRules[
+            normalizedList
+        ];
+
 
     if (
-        position ===
-        expectedPosition
+        expectedRank &&
+        rank !== expectedRank
     ) {
 
         plausibilityWarning.style.display =
-            'none';
+            'block';
 
         return;
+
     }
 
 
     /*
-     * FALSCH
+     * Alles korrekt.
      */
 
     plausibilityWarning.style.display =
-        'block';
+        'none';
 }
 
 
-// =========================
+// ======================================================
 // FARBE SETZEN
-// =========================
+// ======================================================
 
 function setControlColor(
     control,
@@ -266,15 +358,25 @@ function setControlColor(
 ) {
 
     var colors = [
+
         'light-gray',
+
         'red',
+
         'blue',
+
         'green',
+
         'purple',
+
         'orange',
+
         'yellow',
+
         'sky',
+
         'lime'
+
     ];
 
 
@@ -299,9 +401,9 @@ function setControlColor(
 }
 
 
-// =========================
+// ======================================================
 // STATUS
-// =========================
+// ======================================================
 
 function setStatus(
     text,
@@ -336,9 +438,9 @@ function setStatus(
 }
 
 
-// =========================
+// ======================================================
 // SPEICHERN
-// =========================
+// ======================================================
 
 function saveData() {
 
@@ -348,15 +450,12 @@ function saveData() {
     ) {
 
         return;
+
     }
 
 
     /*
-     * Sofort prüfen.
-     *
-     * Dadurch erscheint die Warnung
-     * direkt nach Änderung des Rangs
-     * oder der Position.
+     * Warnung sofort aktualisieren.
      */
 
     checkPlausibility();
@@ -370,13 +469,18 @@ function saveData() {
     return t.set(
 
         'card',
+
         'shared',
 
         'characterData',
 
         {
+
             v: 2,
-            values: storedValues
+
+            values:
+                storedValues
+
         }
 
     ).then(function () {
@@ -403,9 +507,9 @@ function saveData() {
 }
 
 
-// =========================
-// SELECT ERSTELLEN
-// =========================
+// ======================================================
+// SELECT
+// ======================================================
 
 function createSelect(
     field,
@@ -437,7 +541,10 @@ function createSelect(
     );
 
 
-    (field.options || []).forEach(
+    (
+        field.options ||
+        []
+    ).forEach(
         function (option) {
 
             var element =
@@ -470,14 +577,17 @@ function createSelect(
 
 
     /*
-     * Falls ein gespeicherter Wert
-     * existiert, dessen Option später
+     * Falls ein alter gespeicherter Wert
+     * existiert, dessen Option inzwischen
      * gelöscht wurde.
      */
 
     if (
         normalized &&
-        !(field.options || []).some(
+        !(
+            field.options ||
+            []
+        ).some(
             function (option) {
 
                 return (
@@ -507,6 +617,7 @@ function createSelect(
         select.appendChild(
             legacy
         );
+
     }
 
 
@@ -532,7 +643,9 @@ function createSelect(
         'change',
         function () {
 
-            storedValues[field.id] =
+            storedValues[
+                field.id
+            ] =
                 select.value;
 
 
@@ -550,10 +663,6 @@ function createSelect(
             );
 
 
-            /*
-             * Direkt neu prüfen.
-             */
-
             checkPlausibility();
 
 
@@ -567,9 +676,9 @@ function createSelect(
 }
 
 
-// =========================
-// TEXT / DATUM ERSTELLEN
-// =========================
+// ======================================================
+// TEXT / DATUM
+// ======================================================
 
 function createInput(
     field,
@@ -625,7 +734,9 @@ function createInput(
         'change',
         function () {
 
-            storedValues[field.id] =
+            storedValues[
+                field.id
+            ] =
                 input.value.trim();
 
 
@@ -636,7 +747,8 @@ function createInput(
 
 
     if (
-        field.type === 'text'
+        field.type ===
+        'text'
     ) {
 
         input.addEventListener(
@@ -651,10 +763,12 @@ function createInput(
                     event.preventDefault();
 
                     input.blur();
+
                 }
 
             }
         );
+
     }
 
 
@@ -662,9 +776,9 @@ function createInput(
 }
 
 
-// =========================
-// FELD RENDERN
-// =========================
+// ======================================================
+// FIELD RENDERN
+// ======================================================
 
 function renderField(field) {
 
@@ -693,7 +807,9 @@ function renderField(field) {
 
 
     var currentValue =
-        storedValues[field.id] || '';
+        storedValues[
+            field.id
+        ] || '';
 
 
     var control;
@@ -741,13 +857,14 @@ function renderField(field) {
 }
 
 
-// =========================
+// ======================================================
 // LADEN
-// =========================
+// ======================================================
 
 t.render(function () {
 
-    loaded = false;
+    loaded =
+        false;
 
 
     canWrite =
@@ -770,6 +887,15 @@ t.render(function () {
             'shared',
             'characterData',
             {}
+        ),
+
+        /*
+         * NEU:
+         * aktuelle Trello-Liste laden.
+         */
+
+        t.list(
+            'name'
         )
 
     ]).then(function (values) {
@@ -786,18 +912,27 @@ t.render(function () {
             );
 
 
+        currentListName =
+            values[2] &&
+            values[2].name
+                ? values[2].name
+                : '';
+
+
         fieldsGrid.innerHTML =
             '';
 
 
-        schema.fields.forEach(
+        (
+            schema.fields ||
+            []
+        ).forEach(
             renderField
         );
 
 
         /*
-         * Direkt beim Öffnen der Karte
-         * überprüfen.
+         * Beim Öffnen sofort prüfen.
          */
 
         checkPlausibility();
@@ -829,4 +964,5 @@ t.render(function () {
             'CT Fields konnten nicht geladen werden.';
 
     });
+
 });
