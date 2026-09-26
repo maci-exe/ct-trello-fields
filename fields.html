@@ -2,7 +2,9 @@
 <html lang="de">
 
 <head>
+
     <meta charset="UTF-8">
+
     <title>CT Fields</title>
 
     <link
@@ -31,8 +33,9 @@
         #fieldsGrid {
             display: grid;
 
-            /* Immer drei Felder nebeneinander */
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            /* Immer drei Fields nebeneinander */
+            grid-template-columns:
+                repeat(3, minmax(0, 1fr));
 
             column-gap: 7px;
             row-gap: 5px;
@@ -68,8 +71,6 @@
 
             color: #ffffff;
             font-size: 13px;
-
-            transition: background-color 0.15s ease;
         }
 
         select {
@@ -84,7 +85,7 @@
 
 
         /* =========================
-           FELDFARBEN
+           FARBEN
            ========================= */
 
         .color-light-gray {
@@ -124,16 +125,40 @@
         }
 
 
+        /* =========================
+           PLAUSIBILITÄTSFEHLER
+           ========================= */
+
+        #plausibilityWarning {
+            display: none;
+
+            margin-top: 6px;
+
+            font-size: 12px;
+            font-weight: 700;
+
+            color: #f5cd47;
+        }
+
+
+        /* =========================
+           STATUS
+           ========================= */
+
         #status {
             min-height: 12px;
+
             margin-top: 3px;
 
             font-size: 10px;
+
             opacity: 0.55;
         }
 
     </style>
+
 </head>
+
 
 <body>
 
@@ -141,12 +166,18 @@
 
     <div id="fieldsGrid"></div>
 
+    <div id="plausibilityWarning">
+        ⚠ Plausibilitätsfehler
+    </div>
+
     <div id="status"></div>
 
 </div>
+
 
 <script src="./config.js"></script>
 <script src="./fields.js"></script>
 
 </body>
+
 </html>
