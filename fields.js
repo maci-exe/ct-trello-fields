@@ -2,12 +2,29 @@ var t =
     window.TrelloPowerUp.iframe();
 
 
+// =========================
+// ELEMENTE
+// =========================
+
 var fieldsGrid =
-    document.getElementById('fieldsGrid');
+    document.getElementById(
+        'fieldsGrid'
+    );
+
+var plausibilityWarning =
+    document.getElementById(
+        'plausibilityWarning'
+    );
 
 var status =
-    document.getElementById('status');
+    document.getElementById(
+        'status'
+    );
 
+
+// =========================
+// STATE
+// =========================
 
 var schema = null;
 
@@ -36,7 +53,6 @@ function extractValues(data) {
             {},
             data.values
         );
-
     }
 
 
@@ -45,7 +61,198 @@ function extractValues(data) {
         {},
         data || {}
     );
+}
 
+
+// =========================
+// FIELD AUS SCHEMA HOLEN
+// =========================
+
+function getField(fieldId) {
+
+    if (
+        !schema ||
+        !Array.isArray(schema.fields)
+    ) {
+
+        return null;
+    }
+
+
+    return schema.fields.find(
+        function (field) {
+
+            return (
+                field.id === fieldId
+            );
+
+        }
+    ) || null;
+}
+
+
+// =========================
+// PLAUSIBILITÄTSCHECK
+// =========================
+
+function checkPlausibility() {
+
+    /*
+     * Es werden AUSSCHLIESSLICH
+     * diese Ränge geprüft.
+     *
+     * Alle anderen Ränge werden
+     * komplett ignoriert.
+     */
+
+    var rules = {
+
+        // Mannschaftsebene
+        'private-first-class':
+            'mannschaft',
+
+        'lance-corporal':
+            'mannschaft',
+
+        'corporal':
+            'mannschaft',
+
+
+        // Unteroffiziersebene
+        'sergeant':
+            'unteroffizierebene',
+
+        'staff-sergeant':
+            'unteroffizierebene',
+
+        'sergeant-major':
+            'unteroffizierebene',
+
+
+        // Führungsebene
+        'lieutenant':
+            'fuehrungsebene',
+
+        'first-lieutenant':
+            'fuehrungsebene',
+
+
+        // Hohe Führungsebene
+        'captain':
+            'hohe-fuehrungsebene',
+
+        'major':
+            'hohe-fuehrungsebene',
+
+        'commander':
+            'hohe-fuehrungsebene'
+
+    };
+
+
+    var rankField =
+        getField('rank');
+
+    var positionField =
+        getField('position');
+
+
+    /*
+     * Falls Rang oder Position als
+     * Kategorie irgendwann gelöscht
+     * wurde, gibt es keinen Check.
+     */
+
+    if (
+        !rankField ||
+        !positionField
+    ) {
+
+        plausibilityWarning.style.display =
+            'none';
+
+        return;
+    }
+
+
+    /*
+     * Alte gespeicherte Namen werden
+     * ebenfalls auf die internen IDs
+     * normalisiert.
+     */
+
+    var rank =
+        ctNormalizeValue(
+            rankField,
+            storedValues.rank || ''
+        );
+
+
+    var position =
+        ctNormalizeValue(
+            positionField,
+            storedValues.position || ''
+        );
+
+
+    /*
+     * Kein Rang gewählt
+     */
+
+    if (!rank) {
+
+        plausibilityWarning.style.display =
+            'none';
+
+        return;
+    }
+
+
+    /*
+     * Rang ist nicht Bestandteil
+     * unserer Regeln:
+     *
+     * z.B. High General oder
+     * irgendein später angelegter Rang.
+     *
+     * -> komplett ignorieren.
+     */
+
+    if (!rules[rank]) {
+
+        plausibilityWarning.style.display =
+            'none';
+
+        return;
+    }
+
+
+    var expectedPosition =
+        rules[rank];
+
+
+    /*
+     * KORREKT
+     */
+
+    if (
+        position ===
+        expectedPosition
+    ) {
+
+        plausibilityWarning.style.display =
+            'none';
+
+        return;
+    }
+
+
+    /*
+     * FALSCH
+     */
+
+    plausibilityWarning.style.display =
+        'block';
 }
 
 
@@ -71,20 +278,24 @@ function setControlColor(
     ];
 
 
-    colors.forEach(function (item) {
+    colors.forEach(
+        function (item) {
 
-        control.classList.remove(
-            'color-' + item
-        );
+            control.classList.remove(
+                'color-' + item
+            );
 
-    });
+        }
+    );
 
 
     control.classList.add(
         'color-' +
-        (color || 'light-gray')
+        (
+            color ||
+            'light-gray'
+        )
     );
-
 }
 
 
@@ -92,29 +303,36 @@ function setControlColor(
 // STATUS
 // =========================
 
-function setStatus(text, resetAfter) {
+function setStatus(
+    text,
+    resetAfter
+) {
 
-    clearTimeout(statusTimer);
+    clearTimeout(
+        statusTimer
+    );
 
-    status.textContent = text;
+
+    status.textContent =
+        text;
 
 
     if (resetAfter) {
 
-        statusTimer = setTimeout(
-            function () {
+        statusTimer =
+            setTimeout(
+                function () {
 
-                status.textContent =
-                    canWrite
-                        ? 'Änderungen werden automatisch gespeichert.'
-                        : 'Nur-Lese-Ansicht';
+                    status.textContent =
+                        canWrite
+                            ? 'Änderungen werden automatisch gespeichert.'
+                            : 'Nur-Lese-Ansicht';
 
-            },
-            resetAfter
-        );
+                },
+                resetAfter
+            );
 
     }
-
 }
 
 
@@ -128,17 +346,34 @@ function saveData() {
         !loaded ||
         !canWrite
     ) {
+
         return;
     }
 
 
-    setStatus('Speichere...');
+    /*
+     * Sofort prüfen.
+     *
+     * Dadurch erscheint die Warnung
+     * direkt nach Änderung des Rangs
+     * oder der Position.
+     */
+
+    checkPlausibility();
+
+
+    setStatus(
+        'Speichere...'
+    );
 
 
     return t.set(
+
         'card',
         'shared',
+
         'characterData',
+
         {
             v: 2,
             values: storedValues
@@ -154,9 +389,10 @@ function saveData() {
     }).catch(function (error) {
 
         console.error(
-            'CT Fields Card Save Error:',
+            'CT Fields Save Error:',
             error
         );
+
 
         setStatus(
             'Fehler beim Speichern',
@@ -164,7 +400,6 @@ function saveData() {
         );
 
     });
-
 }
 
 
@@ -178,31 +413,46 @@ function createSelect(
 ) {
 
     var select =
-        document.createElement('select');
+        document.createElement(
+            'select'
+        );
 
 
     var empty =
-        document.createElement('option');
+        document.createElement(
+            'option'
+        );
 
-    empty.value = '';
+
+    empty.value =
+        '';
+
 
     empty.textContent =
         '-- Keine Auswahl --';
 
-    select.appendChild(empty);
+
+    select.appendChild(
+        empty
+    );
 
 
     (field.options || []).forEach(
         function (option) {
 
             var element =
-                document.createElement('option');
+                document.createElement(
+                    'option'
+                );
+
 
             element.value =
                 option.id;
 
+
             element.textContent =
                 option.label;
+
 
             select.appendChild(
                 element
@@ -219,30 +469,44 @@ function createSelect(
         );
 
 
-    // Falls eine Option inzwischen gelöscht wurde,
-    // bleibt ein alter Kartenwert trotzdem sichtbar.
+    /*
+     * Falls ein gespeicherter Wert
+     * existiert, dessen Option später
+     * gelöscht wurde.
+     */
+
     if (
         normalized &&
         !(field.options || []).some(
             function (option) {
-                return option.id === normalized;
+
+                return (
+                    option.id ===
+                    normalized
+                );
+
             }
         )
     ) {
 
         var legacy =
-            document.createElement('option');
+            document.createElement(
+                'option'
+            );
+
 
         legacy.value =
             normalized;
 
+
         legacy.textContent =
-            normalized + ' (Altwert)';
+            normalized +
+            ' (Altwert)';
+
 
         select.appendChild(
             legacy
         );
-
     }
 
 
@@ -251,6 +515,7 @@ function createSelect(
 
 
     setControlColor(
+
         select,
 
         select.value
@@ -259,6 +524,7 @@ function createSelect(
                 select.value
             )
             : 'light-gray'
+
     );
 
 
@@ -271,6 +537,7 @@ function createSelect(
 
 
             setControlColor(
+
                 select,
 
                 select.value
@@ -279,7 +546,15 @@ function createSelect(
                         select.value
                     )
                     : 'light-gray'
+
             );
+
+
+            /*
+             * Direkt neu prüfen.
+             */
+
+            checkPlausibility();
 
 
             saveData();
@@ -289,7 +564,6 @@ function createSelect(
 
 
     return select;
-
 }
 
 
@@ -303,7 +577,9 @@ function createInput(
 ) {
 
     var input =
-        document.createElement('input');
+        document.createElement(
+            'input'
+        );
 
 
     input.type =
@@ -317,11 +593,13 @@ function createInput(
 
 
     setControlColor(
+
         input,
 
         input.value
             ? field.color
             : 'light-gray'
+
     );
 
 
@@ -330,11 +608,13 @@ function createInput(
         function () {
 
             setControlColor(
+
                 input,
 
                 input.value
                     ? field.color
                     : 'light-gray'
+
             );
 
         }
@@ -348,34 +628,37 @@ function createInput(
             storedValues[field.id] =
                 input.value.trim();
 
+
             saveData();
 
         }
     );
 
 
-    if (field.type === 'text') {
+    if (
+        field.type === 'text'
+    ) {
 
         input.addEventListener(
             'keydown',
             function (event) {
 
-                if (event.key === 'Enter') {
+                if (
+                    event.key ===
+                    'Enter'
+                ) {
 
                     event.preventDefault();
 
                     input.blur();
-
                 }
 
             }
         );
-
     }
 
 
     return input;
-
 }
 
 
@@ -386,17 +669,24 @@ function createInput(
 function renderField(field) {
 
     var wrapper =
-        document.createElement('div');
+        document.createElement(
+            'div'
+        );
+
 
     wrapper.className =
         'field';
 
 
     var label =
-        document.createElement('label');
+        document.createElement(
+            'label'
+        );
+
 
     label.textContent =
         field.label;
+
 
     label.title =
         field.label;
@@ -409,7 +699,10 @@ function renderField(field) {
     var control;
 
 
-    if (field.type === 'select') {
+    if (
+        field.type ===
+        'select'
+    ) {
 
         control =
             createSelect(
@@ -432,15 +725,19 @@ function renderField(field) {
         !canWrite;
 
 
-    wrapper.appendChild(label);
+    wrapper.appendChild(
+        label
+    );
 
-    wrapper.appendChild(control);
+
+    wrapper.appendChild(
+        control
+    );
 
 
     fieldsGrid.appendChild(
         wrapper
     );
-
 }
 
 
@@ -498,13 +795,22 @@ t.render(function () {
         );
 
 
+        /*
+         * Direkt beim Öffnen der Karte
+         * überprüfen.
+         */
+
+        checkPlausibility();
+
+
         status.textContent =
             canWrite
                 ? 'Änderungen werden automatisch gespeichert.'
                 : 'Nur-Lese-Ansicht';
 
 
-        loaded = true;
+        loaded =
+            true;
 
 
         return t.sizeTo(
@@ -523,5 +829,4 @@ t.render(function () {
             'CT Fields konnten nicht geladen werden.';
 
     });
-
 });
