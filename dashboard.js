@@ -759,10 +759,32 @@ function escapeHtml(value) {
 
 function openCard(card) {
 
-    return t.navigate({
+    /*
+     * Karte zuerst hinter dem Dashboard öffnen.
+     * Danach das CT-Overview-Modal schließen.
+     *
+     * shortLink wurde bereits mit t.cards()
+     * geladen. Falls er aus irgendeinem Grund
+     * fehlt, verwenden wir die normale Card-ID.
+     */
 
-        url:
-            card.url
+    var cardId =
+        card.shortLink ||
+        card.id;
+
+
+    return t.showCard(
+        cardId
+    ).then(function () {
+
+        return t.closeModal();
+
+    }).catch(function (error) {
+
+        console.error(
+            'CT Dashboard Card Open Error:',
+            error
+        );
 
     });
 }
