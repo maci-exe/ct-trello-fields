@@ -8,7 +8,6 @@ window.TrelloPowerUp.initialize({
 
         return [
 
-            // Für alle Bearbeiter
             {
                 text: 'CT Overview',
                 condition: 'edit',
@@ -24,7 +23,6 @@ window.TrelloPowerUp.initialize({
                 }
             },
 
-            // Nur für Board-Admins
             {
                 text: 'CT Fields',
                 condition: 'admin',
@@ -47,7 +45,7 @@ window.TrelloPowerUp.initialize({
 
 
     // ==================================================
-    // FELDER IN GEÖFFNETER KARTE
+    // CT FIELDS IN DER GEÖFFNETEN KARTE
     // ==================================================
 
     'card-back-section': function (t) {
@@ -76,7 +74,7 @@ window.TrelloPowerUp.initialize({
 
 
     // ==================================================
-    // BADGES AUF KARTENVORDERSEITE
+    // BADGES AUF DER KARTENVORDERSEITE
     // ==================================================
 
     'card-badges': function (t) {
@@ -95,6 +93,11 @@ window.TrelloPowerUp.initialize({
                 'shared',
                 'characterData',
                 {}
+            ),
+
+            // Aktuelle Trello-Liste der Karte
+            t.list(
+                'name'
             )
 
         ]).then(function (values) {
@@ -111,18 +114,27 @@ window.TrelloPowerUp.initialize({
                 );
 
 
+            var listName =
+                values[2] &&
+                values[2].name
+                    ? values[2].name
+                    : '';
+
+
             var badges = [];
 
 
-            // ------------------------------------------
+            // ==========================================
             // NORMALE CT FIELDS
-            // ------------------------------------------
+            // ==========================================
 
-            schema.fields.forEach(
+            (schema.fields || []).forEach(
                 function (field) {
 
                     var value =
-                        storedValues[field.id];
+                        storedValues[
+                            field.id
+                        ];
 
 
                     if (!value) {
@@ -138,13 +150,15 @@ window.TrelloPowerUp.initialize({
 
 
                     if (
-                        field.type === 'date'
+                        field.type ===
+                        'date'
                     ) {
 
                         displayValue =
                             formatDate(
                                 displayValue
                             );
+
                     }
 
 
@@ -167,14 +181,15 @@ window.TrelloPowerUp.initialize({
             );
 
 
-            // ------------------------------------------
-            // PLAUSIBILITÄTSFEHLER
-            // ------------------------------------------
+            // ==========================================
+            // PLAUSIBILITÄTSCHECK
+            // ==========================================
 
             if (
                 hasPlausibilityError(
                     schema,
-                    storedValues
+                    storedValues,
+                    listName
                 )
             ) {
 
@@ -213,10 +228,68 @@ function getStoredValues(data) {
     ) {
 
         return data.values;
+
     }
 
 
     return data || {};
+}
+
+
+// ======================================================
+// FIELD FINDEN
+// ======================================================
+
+function getField(
+    schema,
+    id
+) {
+
+    if (
+        !schema ||
+        !Array.isArray(
+            schema.fields
+        )
+    ) {
+
+        return null;
+
+    }
+
+
+    return schema.fields.find(
+        function (field) {
+
+            return (
+                field.id === id
+            );
+
+        }
+    ) || null;
+}
+
+
+// ======================================================
+// LISTENNAME NORMALISIEREN
+// ======================================================
+
+function normalizeListName(name) {
+
+    return String(name || '')
+
+        .replace(
+            /↓/g,
+            ''
+        )
+
+        .replace(
+            /\s+/g,
+            ' '
+        )
+
+        .trim()
+
+        .toLowerCase();
 }
 
 
@@ -226,12 +299,21 @@ function getStoredValues(data) {
 
 function hasPlausibilityError(
     schema,
-    storedValues
+    storedValues,
+    listName
 ) {
 
-    var rules = {
+    /*
+     * RANG -> POSITION
+     *
+     * NUR diese Ränge werden geprüft.
+     * Alle anderen werden ignoriert.
+     */
 
-        // Mannschaft
+    var positionRules = {
+
+        // Mannschaftsebene
+
         'private-first-class':
             'mannschaft',
 
@@ -242,7 +324,8 @@ function hasPlausibilityError(
             'mannschaft',
 
 
-        // Unteroffiziere
+        // Unteroffiziersebene
+
         'sergeant':
             'unteroffizierebene',
 
@@ -253,7 +336,8 @@ function hasPlausibilityError(
             'unteroffizierebene',
 
 
-        // Führung
+        // Führungsebene
+
         'lieutenant':
             'fuehrungsebene',
 
@@ -261,7 +345,8 @@ function hasPlausibilityError(
             'fuehrungsebene',
 
 
-        // Hohe Führung
+        // Hohe Führungsebene
+
         'captain':
             'hohe-fuehrungsebene',
 
@@ -274,27 +359,60 @@ function hasPlausibilityError(
     };
 
 
+    /*
+     * TRELLO-LISTE -> RANG
+     */
+
+    var listRules = {
+
+        'private first class':
+            'private-first-class',
+
+        'lance corporal':
+            'lance-corporal',
+
+        'corporal':
+            'corporal',
+
+        'sergeant':
+            'sergeant',
+
+        'staff sergeant':
+            'staff-sergeant',
+
+        'sergeant major':
+            'sergeant-major',
+
+        'lieutenant':
+            'lieutenant',
+
+        'first lieutenant':
+            'first-lieutenant',
+
+        'captain':
+            'captain',
+
+        'major':
+            'major'
+
+    };
+
+
     var rankField =
-        schema.fields.find(
-            function (field) {
-                return field.id === 'rank';
-            }
+        getField(
+            schema,
+            'rank'
         );
 
 
     var positionField =
-        schema.fields.find(
-            function (field) {
-                return field.id === 'position';
-            }
+        getField(
+            schema,
+            'position'
         );
 
 
-    if (
-        !rankField ||
-        !positionField
-    ) {
-
+    if (!rankField) {
         return false;
     }
 
@@ -306,28 +424,83 @@ function hasPlausibilityError(
         );
 
 
-    var position =
-        ctNormalizeValue(
-            positionField,
-            storedValues.position || ''
-        );
-
+    /*
+     * Kein Rang:
+     * wird im Overview als unvollständig behandelt,
+     * aber NICHT als Plausibilitätsfehler.
+     */
 
     if (!rank) {
         return false;
     }
 
 
-    // Andere Ränge ignorieren
-    if (!rules[rank]) {
+    /*
+     * Alle anderen/custom Ränge ignorieren.
+     */
+
+    if (!positionRules[rank]) {
         return false;
     }
 
 
-    return (
-        position !==
-        rules[rank]
-    );
+    // ==================================================
+    // 1. RANG <-> POSITION
+    // ==================================================
+
+    if (positionField) {
+
+        var position =
+            ctNormalizeValue(
+                positionField,
+                storedValues.position || ''
+            );
+
+
+        if (
+            position !==
+            positionRules[rank]
+        ) {
+
+            return true;
+
+        }
+
+    }
+
+
+    // ==================================================
+    // 2. TRELLO-LISTE <-> RANG
+    // ==================================================
+
+    var normalizedList =
+        normalizeListName(
+            listName
+        );
+
+
+    var expectedRank =
+        listRules[
+            normalizedList
+        ];
+
+
+    /*
+     * Ist keine bekannte Rangliste,
+     * wird die Liste ignoriert.
+     */
+
+    if (
+        expectedRank &&
+        rank !== expectedRank
+    ) {
+
+        return true;
+
+    }
+
+
+    return false;
 }
 
 
@@ -343,7 +516,8 @@ function formatDate(dateString) {
 
 
     var parts =
-        dateString.split('-');
+        String(dateString)
+            .split('-');
 
 
     if (
@@ -351,6 +525,7 @@ function formatDate(dateString) {
     ) {
 
         return dateString;
+
     }
 
 
