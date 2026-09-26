@@ -1,34 +1,54 @@
 window.TrelloPowerUp.initialize({
 
-
-    // =========================
-    // BOARD SETTINGS BUTTON
-    // =========================
+    // ==================================================
+    // BOARD BUTTONS
+    // ==================================================
 
     'board-buttons': function (t) {
 
-        return [{
-            text: 'CT Fields',
-            condition: 'admin',
+        return [
 
-            callback: function (t) {
+            // Für alle Bearbeiter
+            {
+                text: 'CT Overview',
+                condition: 'edit',
 
-                return t.modal({
-                    title: 'CT Fields – Einstellungen',
-                    url: t.signUrl('./settings.html'),
-                    height: 720,
-                    fullscreen: false
-                });
+                callback: function (t) {
 
+                    return t.modal({
+                        title: 'CT Overview',
+                        url: t.signUrl('./dashboard.html'),
+                        fullscreen: true
+                    });
+
+                }
+            },
+
+            // Nur für Board-Admins
+            {
+                text: 'CT Fields',
+                condition: 'admin',
+
+                callback: function (t) {
+
+                    return t.modal({
+                        title: 'CT Fields – Einstellungen',
+                        url: t.signUrl('./settings.html'),
+                        height: 720,
+                        fullscreen: false
+                    });
+
+                }
             }
-        }];
+
+        ];
 
     },
 
 
-    // =========================
-    // FELDER DIREKT IN DER KARTE
-    // =========================
+    // ==================================================
+    // FELDER IN GEÖFFNETER KARTE
+    // ==================================================
 
     'card-back-section': function (t) {
 
@@ -55,9 +75,9 @@ window.TrelloPowerUp.initialize({
     },
 
 
-    // =========================
-    // KARTENVORDERSEITE
-    // =========================
+    // ==================================================
+    // BADGES AUF KARTENVORDERSEITE
+    // ==================================================
 
     'card-badges': function (t) {
 
@@ -85,20 +105,18 @@ window.TrelloPowerUp.initialize({
                 );
 
 
-            var data =
-                values[1] || {};
-
-
             var storedValues =
-                getStoredValues(data);
+                getStoredValues(
+                    values[1] || {}
+                );
 
 
             var badges = [];
 
 
-            // =========================
-            // NORMALE CT-FIELDS
-            // =========================
+            // ------------------------------------------
+            // NORMALE CT FIELDS
+            // ------------------------------------------
 
             schema.fields.forEach(
                 function (field) {
@@ -127,7 +145,6 @@ window.TrelloPowerUp.initialize({
                             formatDate(
                                 displayValue
                             );
-
                     }
 
 
@@ -150,9 +167,9 @@ window.TrelloPowerUp.initialize({
             );
 
 
-            // =========================
-            // PLAUSIBILITÄTSCHECK
-            // =========================
+            // ------------------------------------------
+            // PLAUSIBILITÄTSFEHLER
+            // ------------------------------------------
 
             if (
                 hasPlausibilityError(
@@ -180,13 +197,12 @@ window.TrelloPowerUp.initialize({
 
     }
 
-
 });
 
 
-// =========================
-// ALTE + NEUE KARTENDATEN
-// =========================
+// ======================================================
+// KARTENDATEN
+// ======================================================
 
 function getStoredValues(data) {
 
@@ -197,39 +213,25 @@ function getStoredValues(data) {
     ) {
 
         return data.values;
-
     }
 
 
-    // Kompatibilität mit alten Testdaten
     return data || {};
-
 }
 
 
-// =========================
-// PLAUSIBILITÄTSCHECK
-// =========================
+// ======================================================
+// PLAUSIBILITÄT
+// ======================================================
 
 function hasPlausibilityError(
     schema,
     storedValues
 ) {
 
-    /*
-     * NUR DIESE RÄNGE WERDEN GEPRÜFT.
-     *
-     * Alle anderen Ränge werden
-     * vollständig ignoriert.
-     */
-
     var rules = {
 
-
-        // =========================
-        // MANNSCHAFTSEBENE
-        // =========================
-
+        // Mannschaft
         'private-first-class':
             'mannschaft',
 
@@ -240,10 +242,7 @@ function hasPlausibilityError(
             'mannschaft',
 
 
-        // =========================
-        // UNTEROFFIZIERSEBENE
-        // =========================
-
+        // Unteroffiziere
         'sergeant':
             'unteroffizierebene',
 
@@ -254,10 +253,7 @@ function hasPlausibilityError(
             'unteroffizierebene',
 
 
-        // =========================
-        // FÜHRUNGSEBENE
-        // =========================
-
+        // Führung
         'lieutenant':
             'fuehrungsebene',
 
@@ -265,10 +261,7 @@ function hasPlausibilityError(
             'fuehrungsebene',
 
 
-        // =========================
-        // HOHE FÜHRUNGSEBENE
-        // =========================
-
+        // Hohe Führung
         'captain':
             'hohe-fuehrungsebene',
 
@@ -281,43 +274,21 @@ function hasPlausibilityError(
     };
 
 
-    // =========================
-    // RANG-FIELD FINDEN
-    // =========================
-
     var rankField =
         schema.fields.find(
             function (field) {
-
-                return (
-                    field.id === 'rank'
-                );
-
+                return field.id === 'rank';
             }
         );
 
-
-    // =========================
-    // POSITION-FIELD FINDEN
-    // =========================
 
     var positionField =
         schema.fields.find(
             function (field) {
-
-                return (
-                    field.id === 'position'
-                );
-
+                return field.id === 'position';
             }
         );
 
-
-    /*
-     * Falls eine der Kategorien
-     * nicht mehr existiert,
-     * kein Check.
-     */
 
     if (
         !rankField ||
@@ -325,13 +296,8 @@ function hasPlausibilityError(
     ) {
 
         return false;
-
     }
 
-
-    // =========================
-    // WERTE NORMALISIEREN
-    // =========================
 
     var rank =
         ctNormalizeValue(
@@ -347,76 +313,32 @@ function hasPlausibilityError(
         );
 
 
-    /*
-     * Kein Rang gesetzt.
-     */
-
     if (!rank) {
-
         return false;
-
     }
 
 
-    /*
-     * Rang ist NICHT Bestandteil
-     * unserer Regeln.
-     *
-     * Beispiel:
-     * High General
-     * General
-     * Marshal
-     * usw.
-     *
-     * -> komplett ignorieren.
-     */
-
+    // Andere Ränge ignorieren
     if (!rules[rank]) {
-
         return false;
-
     }
 
 
-    /*
-     * Erwartete Position
-     * anhand des Rangs.
-     */
-
-    var expectedPosition =
-        rules[rank];
-
-
-    /*
-     * Position stimmt nicht
-     * oder wurde gar nicht gesetzt.
-     */
-
-    if (
+    return (
         position !==
-        expectedPosition
-    ) {
-
-        return true;
-
-    }
-
-
-    return false;
-
+        rules[rank]
+    );
 }
 
 
-// =========================
+// ======================================================
 // DATUM
-// =========================
+// ======================================================
 
 function formatDate(dateString) {
 
     if (!dateString) {
-
         return '';
-
     }
 
 
@@ -429,7 +351,6 @@ function formatDate(dateString) {
     ) {
 
         return dateString;
-
     }
 
 
@@ -440,5 +361,4 @@ function formatDate(dateString) {
         '.' +
         parts[0]
     );
-
 }
