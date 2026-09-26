@@ -3,39 +3,42 @@ var t =
 
 
 // ======================================================
-// LISTEN
+// AUSGEWERTETE TRELLO-LISTEN
 // ======================================================
-
-/*
- * Diese Listen werden komplett ausgewertet.
- *
- * Die Pfeile ↓ und zusätzliche Leerzeichen
- * werden beim Vergleich ignoriert.
- */
 
 var MONITORED_LISTS = [
 
     'private first class',
 
     'lance corporal',
+
     'corporal',
 
     'sergeant',
+
     'staff sergeant',
+
     'sergeant major',
 
     'lieutenant',
+
     'first lieutenant',
 
     'captain',
+
     'major'
 
 ];
 
 
+// ======================================================
+// MITGLIEDER-LISTEN
+// ======================================================
+
 /*
  * Private First Class wird überall geprüft,
- * zählt aber NICHT zu "Mitglieder gesamt".
+ * aber NICHT bei "Mitglieder gesamt"
+ * mitgezählt.
  */
 
 var MEMBER_LISTS =
@@ -60,14 +63,22 @@ var loading =
         'loading'
     );
 
+
 var dashboard =
     document.getElementById(
         'dashboard'
     );
 
+
 var errorBox =
     document.getElementById(
         'error'
+    );
+
+
+var refreshButton =
+    document.getElementById(
+        'refreshButton'
     );
 
 
@@ -76,15 +87,18 @@ var memberCount =
         'memberCount'
     );
 
+
 var testCount =
     document.getElementById(
         'testCount'
     );
 
+
 var incompleteCount =
     document.getElementById(
         'incompleteCount'
     );
+
 
 var plausibilityCount =
     document.getElementById(
@@ -103,15 +117,18 @@ var testRunningCount =
         'testRunningCount'
     );
 
+
 var testSoonCount =
     document.getElementById(
         'testSoonCount'
     );
 
+
 var testExpiredCount =
     document.getElementById(
         'testExpiredCount'
     );
+
 
 var testRows =
     document.getElementById(
@@ -128,12 +145,6 @@ var issueRows =
 var duplicateRows =
     document.getElementById(
         'duplicateRows'
-    );
-
-
-var refreshButton =
-    document.getElementById(
-        'refreshButton'
     );
 
 
@@ -170,6 +181,7 @@ function getStoredValues(data) {
     ) {
 
         return data.values;
+
     }
 
 
@@ -181,6 +193,18 @@ function getField(
     schema,
     id
 ) {
+
+    if (
+        !schema ||
+        !Array.isArray(
+            schema.fields
+        )
+    ) {
+
+        return null;
+
+    }
+
 
     return schema.fields.find(
         function (field) {
@@ -196,19 +220,16 @@ function getField(
 
 function hasValue(value) {
 
-    if (
-        value === null ||
-        value === undefined
-    ) {
-
-        return false;
-    }
-
-
     return (
+
+        value !== null &&
+
+        value !== undefined &&
+
         String(value)
             .trim()
             .length > 0
+
     );
 }
 
@@ -219,10 +240,15 @@ function hasValue(value) {
 
 function hasPlausibilityError(
     schema,
-    values
+    values,
+    listName
 ) {
 
-    var rules = {
+    /*
+     * RANG -> POSITION
+     */
+
+    var positionRules = {
 
         'private-first-class':
             'mannschaft',
@@ -263,6 +289,45 @@ function hasPlausibilityError(
     };
 
 
+    /*
+     * TRELLO-LISTE -> RANG
+     */
+
+    var listRules = {
+
+        'private first class':
+            'private-first-class',
+
+        'lance corporal':
+            'lance-corporal',
+
+        'corporal':
+            'corporal',
+
+        'sergeant':
+            'sergeant',
+
+        'staff sergeant':
+            'staff-sergeant',
+
+        'sergeant major':
+            'sergeant-major',
+
+        'lieutenant':
+            'lieutenant',
+
+        'first lieutenant':
+            'first-lieutenant',
+
+        'captain':
+            'captain',
+
+        'major':
+            'major'
+
+    };
+
+
     var rankField =
         getField(
             schema,
@@ -277,11 +342,7 @@ function hasPlausibilityError(
         );
 
 
-    if (
-        !rankField ||
-        !positionField
-    ) {
-
+    if (!rankField) {
         return false;
     }
 
@@ -293,28 +354,75 @@ function hasPlausibilityError(
         );
 
 
-    var position =
-        ctNormalizeValue(
-            positionField,
-            values.position || ''
-        );
-
+    /*
+     * Kein Rang:
+     * zählt als unvollständig,
+     * nicht als Plausibilitätsfehler.
+     */
 
     if (!rank) {
         return false;
     }
 
 
-    // Rang wird nicht geprüft
-    if (!rules[rank]) {
+    /*
+     * Nicht definierte/custom Ränge
+     * komplett ignorieren.
+     */
+
+    if (!positionRules[rank]) {
         return false;
     }
 
 
-    return (
-        position !==
-        rules[rank]
-    );
+    // ==================================================
+    // 1. RANG <-> POSITION
+    // ==================================================
+
+    if (positionField) {
+
+        var position =
+            ctNormalizeValue(
+                positionField,
+                values.position || ''
+            );
+
+
+        if (
+            position !==
+            positionRules[rank]
+        ) {
+
+            return true;
+
+        }
+
+    }
+
+
+    // ==================================================
+    // 2. LISTE <-> RANG
+    // ==================================================
+
+    var expectedRank =
+        listRules[
+            normalizeListName(
+                listName
+            )
+        ];
+
+
+    if (
+        expectedRank &&
+        rank !== expectedRank
+    ) {
+
+        return true;
+
+    }
+
+
+    return false;
 }
 
 
@@ -331,14 +439,12 @@ function getMissingFields(
 
         {
             id: 'rank',
-            fallback:
-                'Rang'
+            fallback: 'Rang'
         },
 
         {
             id: 'position',
-            fallback:
-                'Position'
+            fallback: 'Position'
         },
 
         {
@@ -349,8 +455,7 @@ function getMissingFields(
 
         {
             id: 'ctId',
-            fallback:
-                'ID'
+            fallback: 'ID'
         }
 
     ];
@@ -371,6 +476,7 @@ function getMissingFields(
             ) {
 
                 return;
+
             }
 
 
@@ -382,9 +488,11 @@ function getMissingFields(
 
 
             missing.push(
+
                 field
                     ? field.label
                     : requiredField.fallback
+
             );
 
         }
@@ -407,7 +515,8 @@ function parseDate(value) {
 
 
     var parts =
-        value.split('-');
+        String(value)
+            .split('-');
 
 
     if (
@@ -415,24 +524,25 @@ function parseDate(value) {
     ) {
 
         return null;
+
     }
-
-
-    var year =
-        Number(parts[0]);
-
-    var month =
-        Number(parts[1]) - 1;
-
-    var day =
-        Number(parts[2]);
 
 
     var date =
         new Date(
-            year,
-            month,
-            day
+
+            Number(
+                parts[0]
+            ),
+
+            Number(
+                parts[1]
+            ) - 1,
+
+            Number(
+                parts[2]
+            )
+
         );
 
 
@@ -443,6 +553,7 @@ function parseDate(value) {
     ) {
 
         return null;
+
     }
 
 
@@ -476,10 +587,16 @@ function getToday() {
 }
 
 
+// ======================================================
+// TESTZEIT STATUS
+// ======================================================
+
 function getTestStatus(value) {
 
     var date =
-        parseDate(value);
+        parseDate(
+            value
+        );
 
 
     if (!date) {
@@ -487,51 +604,88 @@ function getTestStatus(value) {
     }
 
 
-    var today =
-        getToday();
-
-
     var difference =
         Math.round(
+
             (
                 date.getTime() -
-                today.getTime()
-            ) /
+                getToday().getTime()
+            )
+
+            /
+
             86400000
+
         );
 
+
+    /*
+     * Datum bereits überschritten
+     */
 
     if (
         difference < 0
     ) {
 
         return {
-            id: 'expired',
-            label: 'Abgelaufen',
-            days: difference
+
+            id:
+                'expired',
+
+            label:
+                'Abgelaufen',
+
+            days:
+                difference
+
         };
+
     }
 
+
+    /*
+     * Heute bis einschließlich
+     * 3 Tage Restzeit.
+     */
 
     if (
         difference <= 3
     ) {
 
         return {
-            id: 'soon',
-            label: 'Läuft bald ab',
-            days: difference
+
+            id:
+                'soon',
+
+            label:
+                'Läuft bald ab',
+
+            days:
+                difference
+
         };
+
     }
 
 
     return {
-        id: 'running',
-        label: 'Läuft',
-        days: difference
+
+        id:
+            'running',
+
+        label:
+            'Läuft',
+
+        days:
+            difference
+
     };
 }
 
+
+// ======================================================
+// DATUM FORMATIEREN
+// ======================================================
 
 function formatDate(value) {
 
@@ -541,7 +695,8 @@ function formatDate(value) {
 
 
     var parts =
-        value.split('-');
+        String(value)
+            .split('-');
 
 
     if (
@@ -549,6 +704,7 @@ function formatDate(value) {
     ) {
 
         return value;
+
     }
 
 
@@ -563,7 +719,7 @@ function formatDate(value) {
 
 
 // ======================================================
-// HTML SAFETY
+// HTML ESCAPING
 // ======================================================
 
 function escapeHtml(value) {
@@ -603,19 +759,17 @@ function escapeHtml(value) {
 
 function openCard(card) {
 
-    /*
-     * Trello-Navigation innerhalb
-     * des aktuellen Boards.
-     */
-
     return t.navigate({
-        url: card.url
+
+        url:
+            card.url
+
     });
 }
 
 
 // ======================================================
-// ANALYSE
+// BOARD ANALYSIEREN
 // ======================================================
 
 function analyze(
@@ -630,13 +784,21 @@ function analyze(
     lists.forEach(
         function (list) {
 
-            listMap[list.id] = {
-                id: list.id,
-                name: list.name,
+            listMap[
+                list.id
+            ] = {
+
+                id:
+                    list.id,
+
+                name:
+                    list.name,
+
                 normalized:
                     normalizeListName(
                         list.name
                     )
+
             };
 
         }
@@ -644,8 +806,8 @@ function analyze(
 
 
     /*
-     * Nur die festgelegten
-     * Ranglisten auswerten.
+     * Nur Karten aus unseren
+     * überwachten Ranglisten.
      */
 
     var relevantCards =
@@ -658,15 +820,14 @@ function analyze(
                     ];
 
 
-                if (!list) {
-                    return false;
-                }
-
-
                 return (
+
+                    list &&
+
                     MONITORED_LISTS.indexOf(
                         list.normalized
                     ) !== -1
+
                 );
 
             }
@@ -674,8 +835,7 @@ function analyze(
 
 
     /*
-     * CharacterData aller relevanten
-     * Karten abrufen.
+     * CT-Fields jeder Karte laden.
      */
 
     return Promise.all(
@@ -693,42 +853,47 @@ function analyze(
 
                     {}
 
-                ).then(function (data) {
+                ).then(
+                    function (data) {
 
-                    return {
+                        return {
 
-                        card: card,
+                            card:
+                                card,
 
-                        list:
-                            listMap[
-                                card.idList
-                            ],
+                            list:
+                                listMap[
+                                    card.idList
+                                ],
 
-                        values:
-                            getStoredValues(
-                                data
-                            )
+                            values:
+                                getStoredValues(
+                                    data
+                                )
 
-                    };
+                        };
 
-                });
+                    }
+                );
 
             }
         )
 
-    ).then(function (items) {
+    ).then(
+        function (items) {
 
-        return buildResult(
-            schema,
-            items
-        );
+            return buildResult(
+                schema,
+                items
+            );
 
-    });
+        }
+    );
 }
 
 
 // ======================================================
-// RESULT
+// RESULT ERSTELLEN
 // ======================================================
 
 function buildResult(
@@ -738,34 +903,41 @@ function buildResult(
 
     var result = {
 
-        memberCount: 0,
+        memberCount:
+            0,
 
-        testCount: 0,
+        testCount:
+            0,
 
-        incompleteCount: 0,
+        incompleteCount:
+            0,
 
-        plausibilityCount: 0,
+        plausibilityCount:
+            0,
 
-        testRunning: 0,
+        testRunning:
+            0,
 
-        testSoon: 0,
+        testSoon:
+            0,
 
-        testExpired: 0,
+        testExpired:
+            0,
 
-        tests: [],
+        tests:
+            [],
 
-        issues: [],
+        issues:
+            [],
 
-        duplicateIds: [],
+        duplicateIds:
+            [],
 
-        ranks: []
+        ranks:
+            []
 
     };
 
-
-    // ==================================================
-    // RANKS INITIALISIEREN
-    // ==================================================
 
     var rankField =
         getField(
@@ -774,13 +946,23 @@ function buildResult(
         );
 
 
-    var rankMap = {};
+    var rankMap =
+        {};
 
+
+    var ids =
+        {};
+
+
+    // ==================================================
+    // RÄNGE INITIALISIEREN
+    // ==================================================
 
     if (rankField) {
 
         (
-            rankField.options || []
+            rankField.options ||
+            []
         ).forEach(
             function (option) {
 
@@ -809,14 +991,7 @@ function buildResult(
 
 
     // ==================================================
-    // ID MAP
-    // ==================================================
-
-    var ids = {};
-
-
-    // ==================================================
-    // CARDS
+    // KARTEN
     // ==================================================
 
     items.forEach(
@@ -825,16 +1000,23 @@ function buildResult(
             var card =
                 item.card;
 
+
             var values =
                 item.values;
+
 
             var listName =
                 item.list.normalized;
 
 
-            // ------------------------------------------
+            // ==========================================
             // MITGLIEDER GESAMT
-            // ------------------------------------------
+            // ==========================================
+
+            /*
+             * Private First Class
+             * wird hier NICHT mitgezählt.
+             */
 
             if (
                 MEMBER_LISTS.indexOf(
@@ -843,12 +1025,17 @@ function buildResult(
             ) {
 
                 result.memberCount++;
+
             }
 
 
-            // ------------------------------------------
+            // ==========================================
             // RANGVERTEILUNG
-            // ------------------------------------------
+            // ==========================================
+
+            /*
+             * Hier zählt PFC ganz normal mit.
+             */
 
             if (
                 rankField &&
@@ -877,9 +1064,9 @@ function buildResult(
             }
 
 
-            // ------------------------------------------
+            // ==========================================
             // UNVOLLSTÄNDIG
-            // ------------------------------------------
+            // ==========================================
 
             var missing =
                 getMissingFields(
@@ -893,29 +1080,40 @@ function buildResult(
             ) {
 
                 result.incompleteCount++;
+
             }
 
 
-            // ------------------------------------------
+            // ==========================================
             // PLAUSIBILITÄT
-            // ------------------------------------------
+            // ==========================================
+
+            /*
+             * Prüft jetzt:
+             *
+             * Rang <-> Position
+             * UND
+             * Trello-Liste <-> Rang
+             */
 
             var plausibility =
                 hasPlausibilityError(
                     schema,
-                    values
+                    values,
+                    listName
                 );
 
 
             if (plausibility) {
 
                 result.plausibilityCount++;
+
             }
 
 
-            // ------------------------------------------
+            // ==========================================
             // TESTZEIT
-            // ------------------------------------------
+            // ==========================================
 
             var testStatus =
                 null;
@@ -926,6 +1124,15 @@ function buildResult(
                     values.testUntil
                 )
             ) {
+
+                /*
+                 * Jede gesetzte Testzeit
+                 * zählt als aktive Testzeit.
+                 *
+                 * Auch:
+                 * - bald ablaufend
+                 * - bereits abgelaufen
+                 */
 
                 result.testCount++;
 
@@ -986,9 +1193,9 @@ function buildResult(
             }
 
 
-            // ------------------------------------------
-            // ID
-            // ------------------------------------------
+            // ==========================================
+            // ID SAMMELN
+            // ==========================================
 
             if (
                 hasValue(
@@ -1000,13 +1207,21 @@ function buildResult(
                     String(
                         values.ctId
                     )
+
                     .trim()
+
                     .toLowerCase();
 
 
-                if (!ids[normalizedId]) {
+                if (
+                    !ids[
+                        normalizedId
+                    ]
+                ) {
 
-                    ids[normalizedId] = {
+                    ids[
+                        normalizedId
+                    ] = {
 
                         display:
                             String(
@@ -1030,35 +1245,30 @@ function buildResult(
             }
 
 
-            // ------------------------------------------
+            // ==========================================
             // AUFFÄLLIGKEITEN
-            // ------------------------------------------
+            // ==========================================
 
-            var problems = [];
+            var problems =
+                [];
 
 
-            if (
-                missing.length > 0
-            ) {
+            missing.forEach(
+                function (name) {
 
-                missing.forEach(
-                    function (name) {
+                    problems.push({
 
-                        problems.push({
+                        text:
+                            name +
+                            ' fehlt',
 
-                            text:
-                                name +
-                                ' fehlt',
+                        type:
+                            'error'
 
-                            type:
-                                'error'
+                    });
 
-                        });
-
-                    }
-                );
-
-            }
+                }
+            );
 
 
             if (plausibility) {
@@ -1078,7 +1288,8 @@ function buildResult(
 
             if (
                 testStatus &&
-                testStatus.id === 'soon'
+                testStatus.id ===
+                'soon'
             ) {
 
                 problems.push({
@@ -1128,10 +1339,12 @@ function buildResult(
 
 
     // ==================================================
-    // DUPLIKATE
+    // DOPPELTE IDS
     // ==================================================
 
-    Object.keys(ids).forEach(
+    Object.keys(
+        ids
+    ).forEach(
         function (key) {
 
             var group =
@@ -1143,6 +1356,7 @@ function buildResult(
             ) {
 
                 return;
+
             }
 
 
@@ -1158,8 +1372,8 @@ function buildResult(
 
 
             /*
-             * Doppelte ID ebenfalls bei
-             * Auffälligkeiten ergänzen.
+             * Bei allen betroffenen Karten
+             * zusätzlich als Auffälligkeit.
              */
 
             group.cards.forEach(
@@ -1199,14 +1413,17 @@ function buildResult(
     );
 
 
-    // Nur echte Auffälligkeiten behalten
+    // ==================================================
+    // NUR KARTEN MIT AUFFÄLLIGKEIT
+    // ==================================================
 
     result.issues =
         result.issues.filter(
             function (issue) {
 
                 return (
-                    issue.problems.length > 0
+                    issue.problems.length >
+                    0
                 );
 
             }
@@ -1214,28 +1431,37 @@ function buildResult(
 
 
     // ==================================================
-    // RANK LIST
+    // RANGVERTEILUNG
     // ==================================================
 
     result.ranks =
-        Object.keys(rankMap).map(
+        Object.keys(
+            rankMap
+        ).map(
             function (key) {
 
-                return rankMap[key];
+                return rankMap[
+                    key
+                ];
 
             }
         );
 
 
     // ==================================================
-    // SORTIERUNG TESTZEITEN
+    // TESTZEITEN SORTIEREN
     // ==================================================
 
     var statusWeight = {
 
-        expired: 0,
-        soon: 1,
-        running: 2
+        expired:
+            0,
+
+        soon:
+            1,
+
+        running:
+            2
 
     };
 
@@ -1247,6 +1473,7 @@ function buildResult(
                 statusWeight[
                     a.status.id
                 ];
+
 
             var weightB =
                 statusWeight[
@@ -1263,16 +1490,22 @@ function buildResult(
                     weightA -
                     weightB
                 );
+
             }
 
 
             return (
+
                 parseDate(
                     a.date
-                ) -
+                )
+
+                -
+
                 parseDate(
                     b.date
                 )
+
             );
 
         }
@@ -1284,7 +1517,7 @@ function buildResult(
 
 
 // ======================================================
-// RENDER
+// HAUPT-RENDER
 // ======================================================
 
 function renderResult(result) {
@@ -1339,7 +1572,7 @@ function renderResult(result) {
 
 
 // ======================================================
-// RANKS
+// RANGVERTEILUNG
 // ======================================================
 
 function renderRanks(ranks) {
@@ -1353,23 +1586,36 @@ function renderRanks(ranks) {
     ) {
 
         rankDistribution.innerHTML =
+
             '<div class="empty">' +
-            'Keine Ränge konfiguriert.' +
+
+                'Keine Ränge konfiguriert.' +
+
             '</div>';
 
+
         return;
+
     }
 
 
     var max =
         Math.max.apply(
+
             null,
 
             ranks.map(
                 function (rank) {
+
                     return rank.count;
+
                 }
-            ).concat([1])
+            )
+
+            .concat(
+                [1]
+            )
+
         );
 
 
@@ -1406,11 +1652,12 @@ function renderRanks(ranks) {
 
                 '<div class="rank-track">' +
 
-                    '<div ' +
-                        'class="rank-fill" ' +
+                    '<div class="rank-fill" ' +
+
                         'style="width:' +
                         width +
                         '%">' +
+
                     '</div>' +
 
                 '</div>' +
@@ -1447,11 +1694,16 @@ function renderTests(tests) {
     ) {
 
         testRows.innerHTML =
+
             '<div class="empty">' +
-            'Keine aktiven Testzeiten.' +
+
+                'Keine aktiven Testzeiten.' +
+
             '</div>';
 
+
         return;
+
     }
 
 
@@ -1479,6 +1731,7 @@ function renderTests(tests) {
 
                 badgeClass =
                     'badge-yellow';
+
             }
 
 
@@ -1489,6 +1742,7 @@ function renderTests(tests) {
 
                 badgeClass =
                     'badge-red';
+
             }
 
 
@@ -1497,15 +1751,19 @@ function renderTests(tests) {
                 '<div>' +
 
                     '<div class="card-name">' +
+
                         escapeHtml(
                             item.card.name
                         ) +
+
                     '</div>' +
 
                     '<div class="subtext">' +
+
                         formatDate(
                             item.date
                         ) +
+
                     '</div>' +
 
                 '</div>' +
@@ -1558,11 +1816,16 @@ function renderIssues(issues) {
     ) {
 
         issueRows.innerHTML =
+
             '<div class="empty">' +
-            '✓ Keine Auffälligkeiten gefunden.' +
+
+                '✓ Keine Auffälligkeiten gefunden.' +
+
             '</div>';
 
+
         return;
+
     }
 
 
@@ -1606,6 +1869,7 @@ function renderIssues(issues) {
 
                     }
                 )
+
                 .join('');
 
 
@@ -1663,11 +1927,16 @@ function renderDuplicates(groups) {
     ) {
 
         duplicateRows.innerHTML =
+
             '<div class="empty">' +
-            '✓ Keine doppelten IDs gefunden.' +
+
+                '✓ Keine doppelten IDs gefunden.' +
+
             '</div>';
 
+
         return;
+
     }
 
 
@@ -1725,7 +1994,9 @@ function renderDuplicates(groups) {
                         'click',
                         function () {
 
-                            openCard(card);
+                            openCard(
+                                card
+                            );
 
                         }
                     );
@@ -1749,7 +2020,7 @@ function renderDuplicates(groups) {
 
 
 // ======================================================
-// LOAD
+// DASHBOARD LADEN
 // ======================================================
 
 function loadDashboard() {
@@ -1792,78 +2063,88 @@ function loadDashboard() {
             'name'
         )
 
-    ]).then(function (values) {
+    ]).then(
+        function (values) {
 
-        var schema =
-            ctDecodeSchema(
-                values[0]
+            var schema =
+                ctDecodeSchema(
+                    values[0]
+                );
+
+
+            var cards =
+                values[1] ||
+                [];
+
+
+            var lists =
+                values[2] ||
+                [];
+
+
+            return analyze(
+                schema,
+                cards,
+                lists
+            );
+
+        }
+    ).then(
+        function (result) {
+
+            renderResult(
+                result
             );
 
 
-        var cards =
-            values[1] || [];
+            loading.style.display =
+                'none';
 
 
-        var lists =
-            values[2] || [];
+            dashboard.style.display =
+                'block';
 
 
-        return analyze(
-            schema,
-            cards,
-            lists
-        );
+            refreshButton.disabled =
+                false;
 
-    }).then(function (result) {
+        }
+    ).catch(
+        function (error) {
 
-        renderResult(
-            result
-        );
-
-
-        loading.style.display =
-            'none';
-
-
-        dashboard.style.display =
-            'block';
-
-
-        refreshButton.disabled =
-            false;
-
-    }).catch(function (error) {
-
-        console.error(
-            'CT Dashboard Error:',
-            error
-        );
-
-
-        loading.style.display =
-            'none';
-
-
-        dashboard.style.display =
-            'none';
-
-
-        errorBox.textContent =
-            'CT Overview konnte nicht geladen werden: ' +
-            (
-                error.message ||
-                'Unbekannter Fehler'
+            console.error(
+                'CT Dashboard Error:',
+                error
             );
 
 
-        errorBox.style.display =
-            'block';
+            loading.style.display =
+                'none';
 
 
-        refreshButton.disabled =
-            false;
+            dashboard.style.display =
+                'none';
 
-    });
+
+            errorBox.textContent =
+
+                'CT Overview konnte nicht geladen werden: ' +
+
+                (
+                    error.message ||
+                    'Unbekannter Fehler'
+                );
+
+
+            errorBox.style.display =
+                'block';
+
+
+            refreshButton.disabled =
+                false;
+
+        }
+    );
 }
 
 
@@ -1873,11 +2154,7 @@ function loadDashboard() {
 
 refreshButton.addEventListener(
     'click',
-    function () {
-
-        loadDashboard();
-
-    }
+    loadDashboard
 );
 
 
