@@ -5,25 +5,25 @@ window.TrelloPowerUp.initialize({
     // BOARD SETTINGS BUTTON
     // =========================
 
-        'board-buttons': function (t) {
+    'board-buttons': function (t) {
 
-            return [{
-                text: 'CT Fields',
-                condition: 'admin',
+        return [{
+            text: 'CT Fields',
+            condition: 'admin',
 
-                callback: function (t) {
+            callback: function (t) {
 
-            return t.modal({
-                title: 'CT Fields – Einstellungen',
-                url: t.signUrl('./settings.html'),
-                height: 720,
-                fullscreen: false
-            });
+                return t.modal({
+                    title: 'CT Fields – Einstellungen',
+                    url: t.signUrl('./settings.html'),
+                    height: 720,
+                    fullscreen: false
+                });
 
-        }
-    }];
+            }
+        }];
 
-},
+    },
 
 
     // =========================
@@ -96,6 +96,10 @@ window.TrelloPowerUp.initialize({
             var badges = [];
 
 
+            // =========================
+            // NORMALE CT-FIELDS
+            // =========================
+
             schema.fields.forEach(
                 function (field) {
 
@@ -144,19 +148,30 @@ window.TrelloPowerUp.initialize({
 
                 }
             );
-                    if (
-                        hasPlausibilityError(
-                            schema,
-                            storedValues
+
+
+            // =========================
+            // PLAUSIBILITÄTSCHECK
+            // =========================
+
+            if (
+                hasPlausibilityError(
+                    schema,
+                    storedValues
                 )
-                    ) {
+            ) {
 
                 badges.push({
-                    text: '⚠ Plausibilitätsfehler',
-                    color: 'yellow'
-            });
 
-        }
+                    text:
+                        '⚠ Plausibilitätsfehler',
+
+                    color:
+                        'yellow'
+
+                });
+
+            }
 
 
             return badges;
@@ -164,6 +179,7 @@ window.TrelloPowerUp.initialize({
         });
 
     }
+
 
 });
 
@@ -185,47 +201,34 @@ function getStoredValues(data) {
     }
 
 
-    // Kompatibilität mit unserem bisherigen Teststand.
+    // Kompatibilität mit alten Testdaten
     return data || {};
 
 }
 
 
 // =========================
-// DATUM
+// PLAUSIBILITÄTSCHECK
 // =========================
 
-function formatDate(dateString) {
-
-    if (!dateString) {
-        return '';
-    }
-
-
-    var parts =
-        dateString.split('-');
-
-
-    if (parts.length !== 3) {
-        return dateString;
-    }
-
-
-    return (
-        parts[2] +
-        '.' +
-        parts[1] +
-        '.' +
-        parts[0]
-    );
-
-}
 function hasPlausibilityError(
     schema,
     storedValues
 ) {
 
+    /*
+     * NUR DIESE RÄNGE WERDEN GEPRÜFT.
+     *
+     * Alle anderen Ränge werden
+     * vollständig ignoriert.
+     */
+
     var rules = {
+
+
+        // =========================
+        // MANNSCHAFTSEBENE
+        // =========================
 
         'private-first-class':
             'mannschaft',
@@ -237,6 +240,10 @@ function hasPlausibilityError(
             'mannschaft',
 
 
+        // =========================
+        // UNTEROFFIZIERSEBENE
+        // =========================
+
         'sergeant':
             'unteroffizierebene',
 
@@ -247,12 +254,20 @@ function hasPlausibilityError(
             'unteroffizierebene',
 
 
+        // =========================
+        // FÜHRUNGSEBENE
+        // =========================
+
         'lieutenant':
             'fuehrungsebene',
 
         'first-lieutenant':
             'fuehrungsebene',
 
+
+        // =========================
+        // HOHE FÜHRUNGSEBENE
+        // =========================
 
         'captain':
             'hohe-fuehrungsebene',
@@ -266,21 +281,43 @@ function hasPlausibilityError(
     };
 
 
+    // =========================
+    // RANG-FIELD FINDEN
+    // =========================
+
     var rankField =
         schema.fields.find(
             function (field) {
-                return field.id === 'rank';
+
+                return (
+                    field.id === 'rank'
+                );
+
             }
         );
 
+
+    // =========================
+    // POSITION-FIELD FINDEN
+    // =========================
 
     var positionField =
         schema.fields.find(
             function (field) {
-                return field.id === 'position';
+
+                return (
+                    field.id === 'position'
+                );
+
             }
         );
 
+
+    /*
+     * Falls eine der Kategorien
+     * nicht mehr existiert,
+     * kein Check.
+     */
 
     if (
         !rankField ||
@@ -288,8 +325,13 @@ function hasPlausibilityError(
     ) {
 
         return false;
+
     }
 
+
+    // =========================
+    // WERTE NORMALISIEREN
+    // =========================
 
     var rank =
         ctNormalizeValue(
@@ -305,20 +347,98 @@ function hasPlausibilityError(
         );
 
 
-    // Kein Rang gesetzt
+    /*
+     * Kein Rang gesetzt.
+     */
+
     if (!rank) {
+
         return false;
+
     }
 
 
-    // Rang gehört nicht zu unseren Regeln
+    /*
+     * Rang ist NICHT Bestandteil
+     * unserer Regeln.
+     *
+     * Beispiel:
+     * High General
+     * General
+     * Marshal
+     * usw.
+     *
+     * -> komplett ignorieren.
+     */
+
     if (!rules[rank]) {
+
         return false;
+
+    }
+
+
+    /*
+     * Erwartete Position
+     * anhand des Rangs.
+     */
+
+    var expectedPosition =
+        rules[rank];
+
+
+    /*
+     * Position stimmt nicht
+     * oder wurde gar nicht gesetzt.
+     */
+
+    if (
+        position !==
+        expectedPosition
+    ) {
+
+        return true;
+
+    }
+
+
+    return false;
+
+}
+
+
+// =========================
+// DATUM
+// =========================
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+
+        return '';
+
+    }
+
+
+    var parts =
+        dateString.split('-');
+
+
+    if (
+        parts.length !== 3
+    ) {
+
+        return dateString;
+
     }
 
 
     return (
-        position !==
-        rules[rank]
+        parts[2] +
+        '.' +
+        parts[1] +
+        '.' +
+        parts[0]
     );
+
 }
