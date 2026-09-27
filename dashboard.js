@@ -3,7 +3,7 @@ var t =
 
 
 // ======================================================
-// AUSGEWERTETE TRELLO-LISTEN
+// ÜBERWACHTE LISTEN
 // ======================================================
 
 var MONITORED_LISTS = [
@@ -31,15 +31,8 @@ var MONITORED_LISTS = [
 ];
 
 
-// ======================================================
-// MITGLIEDER-LISTEN
-// ======================================================
-
-/*
- * Private First Class wird überall geprüft,
- * aber NICHT bei "Mitglieder gesamt"
- * mitgezählt.
- */
+// PFC wird überall geprüft,
+// aber NICHT als Mitglied gezählt.
 
 var MEMBER_LISTS =
     MONITORED_LISTS.filter(
@@ -54,102 +47,173 @@ var MEMBER_LISTS =
     );
 
 
+var AUTO_REFRESH_MS =
+    60000;
+
+
+// ======================================================
+// STATE
+// ======================================================
+
+var state = {
+
+    result:
+        null,
+
+    search:
+        '',
+
+    filter:
+        'all',
+
+    loading:
+        false,
+
+    lastUpdated:
+        null,
+
+    nextRefreshAt:
+        null
+
+};
+
+
 // ======================================================
 // DOM
 // ======================================================
 
-var loading =
-    document.getElementById(
-        'loading'
-    );
+var els = {
 
+    loading:
+        document.getElementById(
+            'loading'
+        ),
 
-var dashboard =
-    document.getElementById(
-        'dashboard'
-    );
+    dashboard:
+        document.getElementById(
+            'dashboard'
+        ),
 
+    error:
+        document.getElementById(
+            'error'
+        ),
 
-var errorBox =
-    document.getElementById(
-        'error'
-    );
+    refreshButton:
+        document.getElementById(
+            'refreshButton'
+        ),
 
+    lastUpdated:
+        document.getElementById(
+            'lastUpdated'
+        ),
 
-var refreshButton =
-    document.getElementById(
-        'refreshButton'
-    );
+    autoRefreshInfo:
+        document.getElementById(
+            'autoRefreshInfo'
+        ),
 
+    searchInput:
+        document.getElementById(
+            'searchInput'
+        ),
 
-var memberCount =
-    document.getElementById(
-        'memberCount'
-    );
+    clearSearchButton:
+        document.getElementById(
+            'clearSearchButton'
+        ),
 
+    filterInfo:
+        document.getElementById(
+            'filterInfo'
+        ),
 
-var testCount =
-    document.getElementById(
-        'testCount'
-    );
+    memberCount:
+        document.getElementById(
+            'memberCount'
+        ),
 
+    testCount:
+        document.getElementById(
+            'testCount'
+        ),
 
-var incompleteCount =
-    document.getElementById(
-        'incompleteCount'
-    );
+    incompleteCount:
+        document.getElementById(
+            'incompleteCount'
+        ),
 
+    plausibilityCount:
+        document.getElementById(
+            'plausibilityCount'
+        ),
 
-var plausibilityCount =
-    document.getElementById(
-        'plausibilityCount'
-    );
+    rankDistribution:
+        document.getElementById(
+            'rankDistribution'
+        ),
 
+    unitDistribution:
+        document.getElementById(
+            'unitDistribution'
+        ),
 
-var rankDistribution =
-    document.getElementById(
-        'rankDistribution'
-    );
+    testRunningCount:
+        document.getElementById(
+            'testRunningCount'
+        ),
 
+    testSoonCount:
+        document.getElementById(
+            'testSoonCount'
+        ),
 
-var testRunningCount =
-    document.getElementById(
-        'testRunningCount'
-    );
+    testExpiredCount:
+        document.getElementById(
+            'testExpiredCount'
+        ),
 
+    testRows:
+        document.getElementById(
+            'testRows'
+        ),
 
-var testSoonCount =
-    document.getElementById(
-        'testSoonCount'
-    );
+    filteredPanel:
+        document.getElementById(
+            'filteredPanel'
+        ),
 
+    filteredTitle:
+        document.getElementById(
+            'filteredTitle'
+        ),
 
-var testExpiredCount =
-    document.getElementById(
-        'testExpiredCount'
-    );
+    filteredRows:
+        document.getElementById(
+            'filteredRows'
+        ),
 
+    issueRows:
+        document.getElementById(
+            'issueRows'
+        ),
 
-var testRows =
-    document.getElementById(
-        'testRows'
-    );
+    duplicateRows:
+        document.getElementById(
+            'duplicateRows'
+        ),
 
+    copyIssuesButton:
+        document.getElementById(
+            'copyIssuesButton'
+        )
 
-var issueRows =
-    document.getElementById(
-        'issueRows'
-    );
-
-
-var duplicateRows =
-    document.getElementById(
-        'duplicateRows'
-    );
+};
 
 
 // ======================================================
-// HELPER
+// LISTENNAME
 // ======================================================
 
 function normalizeListName(name) {
@@ -169,8 +233,13 @@ function normalizeListName(name) {
         .trim()
 
         .toLowerCase();
+
 }
 
+
+// ======================================================
+// KARTENDATEN
+// ======================================================
 
 function getStoredValues(data) {
 
@@ -186,8 +255,13 @@ function getStoredValues(data) {
 
 
     return data || {};
+
 }
 
+
+// ======================================================
+// FIELD
+// ======================================================
 
 function getField(
     schema,
@@ -215,8 +289,13 @@ function getField(
 
         }
     ) || null;
+
 }
 
+
+// ======================================================
+// VALUE
+// ======================================================
 
 function hasValue(value) {
 
@@ -231,275 +310,43 @@ function hasValue(value) {
             .length > 0
 
     );
+
 }
 
 
 // ======================================================
-// PLAUSIBILITÄT
+// HTML
 // ======================================================
 
-function hasPlausibilityError(
-    schema,
-    values,
-    listName
-) {
+function escapeHtml(value) {
 
-    /*
-     * RANG -> POSITION
-     */
+    return String(value || '')
 
-    var positionRules = {
+        .replace(
+            /&/g,
+            '&amp;'
+        )
 
-        'private-first-class':
-            'mannschaft',
+        .replace(
+            /</g,
+            '&lt;'
+        )
 
-        'lance-corporal':
-            'mannschaft',
+        .replace(
+            />/g,
+            '&gt;'
+        )
 
-        'corporal':
-            'mannschaft',
+        .replace(
+            /"/g,
+            '&quot;'
+        )
 
-
-        'sergeant':
-            'unteroffizierebene',
-
-        'staff-sergeant':
-            'unteroffizierebene',
-
-        'sergeant-major':
-            'unteroffizierebene',
-
-
-        'lieutenant':
-            'fuehrungsebene',
-
-        'first-lieutenant':
-            'fuehrungsebene',
-
-
-        'captain':
-            'hohe-fuehrungsebene',
-
-        'major':
-            'hohe-fuehrungsebene',
-
-        'commander':
-            'hohe-fuehrungsebene'
-
-    };
-
-
-    /*
-     * TRELLO-LISTE -> RANG
-     */
-
-    var listRules = {
-
-        'private first class':
-            'private-first-class',
-
-        'lance corporal':
-            'lance-corporal',
-
-        'corporal':
-            'corporal',
-
-        'sergeant':
-            'sergeant',
-
-        'staff sergeant':
-            'staff-sergeant',
-
-        'sergeant major':
-            'sergeant-major',
-
-        'lieutenant':
-            'lieutenant',
-
-        'first lieutenant':
-            'first-lieutenant',
-
-        'captain':
-            'captain',
-
-        'major':
-            'major'
-
-    };
-
-
-    var rankField =
-        getField(
-            schema,
-            'rank'
+        .replace(
+            /'/g,
+            '&#039;'
         );
 
-
-    var positionField =
-        getField(
-            schema,
-            'position'
-        );
-
-
-    if (!rankField) {
-        return false;
-    }
-
-
-    var rank =
-        ctNormalizeValue(
-            rankField,
-            values.rank || ''
-        );
-
-
-    /*
-     * Kein Rang:
-     * zählt als unvollständig,
-     * nicht als Plausibilitätsfehler.
-     */
-
-    if (!rank) {
-        return false;
-    }
-
-
-    /*
-     * Nicht definierte/custom Ränge
-     * komplett ignorieren.
-     */
-
-    if (!positionRules[rank]) {
-        return false;
-    }
-
-
-    // ==================================================
-    // 1. RANG <-> POSITION
-    // ==================================================
-
-    if (positionField) {
-
-        var position =
-            ctNormalizeValue(
-                positionField,
-                values.position || ''
-            );
-
-
-        if (
-            position !==
-            positionRules[rank]
-        ) {
-
-            return true;
-
-        }
-
-    }
-
-
-    // ==================================================
-    // 2. LISTE <-> RANG
-    // ==================================================
-
-    var expectedRank =
-        listRules[
-            normalizeListName(
-                listName
-            )
-        ];
-
-
-    if (
-        expectedRank &&
-        rank !== expectedRank
-    ) {
-
-        return true;
-
-    }
-
-
-    return false;
-}
-
-
-// ======================================================
-// PFLICHTFELDER
-// ======================================================
-
-function getMissingFields(
-    schema,
-    values
-) {
-
-    var required = [
-
-        {
-            id: 'rank',
-            fallback: 'Rang'
-        },
-
-        {
-            id: 'position',
-            fallback: 'Position'
-        },
-
-        {
-            id: 'promotion',
-            fallback:
-                'Letzte Beförderung'
-        },
-
-        {
-            id: 'ctId',
-            fallback: 'ID'
-        }
-
-    ];
-
-
-    var missing = [];
-
-
-    required.forEach(
-        function (requiredField) {
-
-            if (
-                hasValue(
-                    values[
-                        requiredField.id
-                    ]
-                )
-            ) {
-
-                return;
-
-            }
-
-
-            var field =
-                getField(
-                    schema,
-                    requiredField.id
-                );
-
-
-            missing.push(
-
-                field
-                    ? field.label
-                    : requiredField.fallback
-
-            );
-
-        }
-    );
-
-
-    return missing;
 }
 
 
@@ -566,6 +413,7 @@ function parseDate(value) {
 
 
     return date;
+
 }
 
 
@@ -584,11 +432,68 @@ function getToday() {
 
 
     return today;
+
+}
+
+
+function formatDate(value) {
+
+    if (!value) {
+        return '';
+    }
+
+
+    var parts =
+        String(value)
+            .split('-');
+
+
+    if (
+        parts.length !== 3
+    ) {
+
+        return value;
+
+    }
+
+
+    return (
+        parts[2] +
+        '.' +
+        parts[1] +
+        '.' +
+        parts[0]
+    );
+
+}
+
+
+function formatTime(date) {
+
+    if (!date) {
+        return '–';
+    }
+
+
+    return date.toLocaleTimeString(
+        'de-AT',
+        {
+            hour:
+                '2-digit',
+
+            minute:
+                '2-digit',
+
+            second:
+                '2-digit'
+        }
+    );
+
 }
 
 
 // ======================================================
-// TESTZEIT STATUS
+// TESTZEIT
 // ======================================================
 
 function getTestStatus(value) {
@@ -619,9 +524,7 @@ function getTestStatus(value) {
         );
 
 
-    /*
-     * Datum bereits überschritten
-     */
+    // ABGELAUFEN
 
     if (
         difference < 0
@@ -643,10 +546,7 @@ function getTestStatus(value) {
     }
 
 
-    /*
-     * Heute bis einschließlich
-     * 3 Tage Restzeit.
-     */
+    // 0 - 3 TAGE
 
     if (
         difference <= 3
@@ -680,76 +580,358 @@ function getTestStatus(value) {
             difference
 
     };
+
 }
 
 
 // ======================================================
-// DATUM FORMATIEREN
+// CT FARBEN
 // ======================================================
 
-function formatDate(value) {
+function getCtColorHex(color) {
 
-    if (!value) {
-        return '';
-    }
+    var colors = {
 
+        'light-gray':
+            '#6b778c',
 
-    var parts =
-        String(value)
-            .split('-');
+        'red':
+            '#c9372c',
 
+        'blue':
+            '#0c66e4',
 
-    if (
-        parts.length !== 3
-    ) {
+        'green':
+            '#1f845a',
 
-        return value;
+        'purple':
+            '#6e5dc6',
 
-    }
+        'orange':
+            '#e56910',
+
+        'yellow':
+            '#b38600',
+
+        'sky':
+            '#0e7c86',
+
+        'lime':
+            '#5b7f24'
+
+    };
 
 
     return (
-        parts[2] +
-        '.' +
-        parts[1] +
-        '.' +
-        parts[0]
+        colors[color] ||
+        colors['light-gray']
     );
+
 }
 
 
 // ======================================================
-// HTML ESCAPING
+// PFLICHTFELDER
 // ======================================================
 
-function escapeHtml(value) {
+function getMissingFields(
+    schema,
+    values
+) {
 
-    return String(value || '')
+    var required = [
 
-        .replace(
-            /&/g,
-            '&amp;'
-        )
+        {
+            id:
+                'rank',
 
-        .replace(
-            /</g,
-            '&lt;'
-        )
+            fallback:
+                'Rang'
+        },
 
-        .replace(
-            />/g,
-            '&gt;'
-        )
+        {
+            id:
+                'position',
 
-        .replace(
-            /"/g,
-            '&quot;'
-        )
+            fallback:
+                'Position'
+        },
 
-        .replace(
-            /'/g,
-            '&#039;'
+        {
+            id:
+                'promotion',
+
+            fallback:
+                'Letzte Beförderung'
+        },
+
+        {
+            id:
+                'ctId',
+
+            fallback:
+                'ID'
+        }
+
+    ];
+
+
+    var missing =
+        [];
+
+
+    required.forEach(
+        function (
+            requiredField
+        ) {
+
+            if (
+                hasValue(
+                    values[
+                        requiredField.id
+                    ]
+                )
+            ) {
+
+                return;
+
+            }
+
+
+            var field =
+                getField(
+                    schema,
+                    requiredField.id
+                );
+
+
+            missing.push(
+
+                field
+                    ? field.label
+                    : requiredField.fallback
+
+            );
+
+        }
+    );
+
+
+    return missing;
+
+}
+
+
+// ======================================================
+// PLAUSIBILITÄT
+// ======================================================
+
+function getPlausibilityIssues(
+    schema,
+    values,
+    listName
+) {
+
+    var positionRules = {
+
+        'private-first-class':
+            'mannschaft',
+
+        'lance-corporal':
+            'mannschaft',
+
+        'corporal':
+            'mannschaft',
+
+
+        'sergeant':
+            'unteroffizierebene',
+
+        'staff-sergeant':
+            'unteroffizierebene',
+
+        'sergeant-major':
+            'unteroffizierebene',
+
+
+        'lieutenant':
+            'fuehrungsebene',
+
+        'first-lieutenant':
+            'fuehrungsebene',
+
+
+        'captain':
+            'hohe-fuehrungsebene',
+
+        'major':
+            'hohe-fuehrungsebene',
+
+        'commander':
+            'hohe-fuehrungsebene'
+
+    };
+
+
+    var listRules = {
+
+        'private first class':
+            'private-first-class',
+
+        'lance corporal':
+            'lance-corporal',
+
+        'corporal':
+            'corporal',
+
+        'sergeant':
+            'sergeant',
+
+        'staff sergeant':
+            'staff-sergeant',
+
+        'sergeant major':
+            'sergeant-major',
+
+        'lieutenant':
+            'lieutenant',
+
+        'first lieutenant':
+            'first-lieutenant',
+
+        'captain':
+            'captain',
+
+        'major':
+            'major'
+
+    };
+
+
+    var issues =
+        [];
+
+
+    var rankField =
+        getField(
+            schema,
+            'rank'
         );
+
+
+    var positionField =
+        getField(
+            schema,
+            'position'
+        );
+
+
+    if (!rankField) {
+
+        return issues;
+
+    }
+
+
+    var rank =
+        ctNormalizeValue(
+            rankField,
+            values.rank || ''
+        );
+
+
+    /*
+     * Kein Rang oder unbekannter/custom Rang:
+     * keine Plausibilitätsprüfung.
+     */
+
+    if (
+        !rank ||
+        !positionRules[rank]
+    ) {
+
+        return issues;
+
+    }
+
+
+    // ==================================================
+    // RANG <-> POSITION
+    // ==================================================
+
+    if (positionField) {
+
+        var position =
+            ctNormalizeValue(
+                positionField,
+                values.position || ''
+            );
+
+
+        if (
+            position !==
+            positionRules[rank]
+        ) {
+
+            issues.push({
+
+                kind:
+                    'rank-position',
+
+                text:
+                    'Plausibilität: Rang ↔ Position',
+
+                severity:
+                    'warning',
+
+                priority:
+                    70
+
+            });
+
+        }
+
+    }
+
+
+    // ==================================================
+    // LISTE <-> RANG
+    // ==================================================
+
+    var expectedRank =
+        listRules[
+            normalizeListName(
+                listName
+            )
+        ];
+
+
+    if (
+        expectedRank &&
+        rank !== expectedRank
+    ) {
+
+        issues.push({
+
+            kind:
+                'list-rank',
+
+            text:
+                'Plausibilität: Liste ↔ Rang',
+
+            severity:
+                'warning',
+
+            priority:
+                75
+
+        });
+
+    }
+
+
+    return issues;
+
 }
 
 
@@ -759,15 +941,6 @@ function escapeHtml(value) {
 
 function openCard(card) {
 
-    /*
-     * Karte zuerst hinter dem Dashboard öffnen.
-     * Danach das CT-Overview-Modal schließen.
-     *
-     * shortLink wurde bereits mit t.cards()
-     * geladen. Falls er aus irgendeinem Grund
-     * fehlt, verwenden wir die normale Card-ID.
-     */
-
     var cardId =
         card.shortLink ||
         card.id;
@@ -775,18 +948,27 @@ function openCard(card) {
 
     return t.showCard(
         cardId
-    ).then(function () {
+    )
 
-        return t.closeModal();
+    .then(
+        function () {
 
-    }).catch(function (error) {
+            return t.closeModal();
 
-        console.error(
-            'CT Dashboard Card Open Error:',
-            error
-        );
+        }
+    )
 
-    });
+    .catch(
+        function (error) {
+
+            console.error(
+                'CT Dashboard Card Open Error:',
+                error
+            );
+
+        }
+    );
+
 }
 
 
@@ -800,7 +982,8 @@ function analyze(
     lists
 ) {
 
-    var listMap = {};
+    var listMap =
+        {};
 
 
     lists.forEach(
@@ -827,11 +1010,6 @@ function analyze(
     );
 
 
-    /*
-     * Nur Karten aus unseren
-     * überwachten Ranglisten.
-     */
-
     var relevantCards =
         cards.filter(
             function (card) {
@@ -855,10 +1033,6 @@ function analyze(
             }
         );
 
-
-    /*
-     * CT-Fields jeder Karte laden.
-     */
 
     return Promise.all(
 
@@ -911,16 +1085,17 @@ function analyze(
 
         }
     );
+
 }
 
 
 // ======================================================
-// RESULT ERSTELLEN
+// RESULT
 // ======================================================
 
 function buildResult(
     schema,
-    items
+    sourceItems
 ) {
 
     var result = {
@@ -946,6 +1121,9 @@ function buildResult(
         testExpired:
             0,
 
+        items:
+            [],
+
         tests:
             [],
 
@@ -956,6 +1134,9 @@ function buildResult(
             [],
 
         ranks:
+            [],
+
+        units:
             []
 
     };
@@ -968,7 +1149,18 @@ function buildResult(
         );
 
 
+    var unitField =
+        getField(
+            schema,
+            'unit'
+        );
+
+
     var rankMap =
+        {};
+
+
+    var unitMap =
         {};
 
 
@@ -1013,82 +1205,65 @@ function buildResult(
 
 
     // ==================================================
+    // UNTEREINHEITEN INITIALISIEREN
+    // ==================================================
+
+    if (unitField) {
+
+        (
+            unitField.options ||
+            []
+        ).forEach(
+            function (option) {
+
+                unitMap[
+                    option.id
+                ] = {
+
+                    id:
+                        option.id,
+
+                    label:
+                        option.label,
+
+                    color:
+                        option.color,
+
+                    count:
+                        0
+
+                };
+
+            }
+        );
+
+    }
+
+
+    // ==================================================
     // KARTEN
     // ==================================================
 
-    items.forEach(
-        function (item) {
+    sourceItems.forEach(
+        function (source) {
 
             var card =
-                item.card;
+                source.card;
 
 
             var values =
-                item.values;
+                source.values;
 
 
             var listName =
-                item.list.normalized;
+                source.list.normalized;
 
 
-            // ==========================================
-            // MITGLIEDER GESAMT
-            // ==========================================
-
-            /*
-             * Private First Class
-             * wird hier NICHT mitgezählt.
-             */
-
-            if (
+            var isMember =
                 MEMBER_LISTS.indexOf(
                     listName
-                ) !== -1
-            ) {
+                ) !== -1;
 
-                result.memberCount++;
-
-            }
-
-
-            // ==========================================
-            // RANGVERTEILUNG
-            // ==========================================
-
-            /*
-             * Hier zählt PFC ganz normal mit.
-             */
-
-            if (
-                rankField &&
-                values.rank
-            ) {
-
-                var rankId =
-                    ctNormalizeValue(
-                        rankField,
-                        values.rank
-                    );
-
-
-                if (
-                    rankMap[
-                        rankId
-                    ]
-                ) {
-
-                    rankMap[
-                        rankId
-                    ].count++;
-
-                }
-
-            }
-
-
-            // ==========================================
-            // UNVOLLSTÄNDIG
-            // ==========================================
 
             var missing =
                 getMissingFields(
@@ -1097,49 +1272,211 @@ function buildResult(
                 );
 
 
-            if (
-                missing.length > 0
-            ) {
-
-                result.incompleteCount++;
-
-            }
-
-
-            // ==========================================
-            // PLAUSIBILITÄT
-            // ==========================================
-
-            /*
-             * Prüft jetzt:
-             *
-             * Rang <-> Position
-             * UND
-             * Trello-Liste <-> Rang
-             */
-
-            var plausibility =
-                hasPlausibilityError(
+            var plausibilityIssues =
+                getPlausibilityIssues(
                     schema,
                     values,
                     listName
                 );
 
 
-            if (plausibility) {
+            var testStatus =
+                hasValue(
+                    values.testUntil
+                )
+                    ? getTestStatus(
+                        values.testUntil
+                    )
+                    : null;
 
-                result.plausibilityCount++;
+
+            var ctId =
+                hasValue(
+                    values.ctId
+                )
+                    ? String(
+                        values.ctId
+                    ).trim()
+                    : '';
+
+
+            var rankId =
+                rankField &&
+                values.rank
+
+                    ? ctNormalizeValue(
+                        rankField,
+                        values.rank
+                    )
+
+                    : '';
+
+
+            var unitId =
+                unitField &&
+                values.unit
+
+                    ? ctNormalizeValue(
+                        unitField,
+                        values.unit
+                    )
+
+                    : '';
+
+
+            var item = {
+
+                card:
+                    card,
+
+                list:
+                    source.list,
+
+                values:
+                    values,
+
+                isMember:
+                    isMember,
+
+                missing:
+                    missing,
+
+                plausibilityIssues:
+                    plausibilityIssues,
+
+                testStatus:
+                    testStatus,
+
+                ctId:
+                    ctId,
+
+                rankId:
+                    rankId,
+
+                unitId:
+                    unitId,
+
+                duplicateId:
+                    false,
+
+                problems:
+                    []
+
+            };
+
+
+            // ==================================================
+            // MITGLIEDER
+            // ==================================================
+
+            if (isMember) {
+
+                result.memberCount++;
 
             }
 
 
-            // ==========================================
+            // ==================================================
+            // RANG
+            // ==================================================
+
+            if (
+                rankId &&
+                rankMap[
+                    rankId
+                ]
+            ) {
+
+                rankMap[
+                    rankId
+                ].count++;
+
+            }
+
+
+            // ==================================================
+            // UNTEREINHEIT
+            // ==================================================
+
+            if (
+                unitId &&
+                unitMap[
+                    unitId
+                ]
+            ) {
+
+                unitMap[
+                    unitId
+                ].count++;
+
+            }
+
+
+            // ==================================================
+            // FEHLENDE PFLICHTFELDER
+            // ==================================================
+
+            if (
+                missing.length > 0
+            ) {
+
+                result.incompleteCount++;
+
+
+                missing.forEach(
+                    function (name) {
+
+                        item.problems.push({
+
+                            kind:
+                                'missing',
+
+                            text:
+                                name +
+                                ' fehlt',
+
+                            severity:
+                                'muted',
+
+                            priority:
+                                20
+
+                        });
+
+                    }
+                );
+
+            }
+
+
+            // ==================================================
+            // PLAUSIBILITÄT
+            // ==================================================
+
+            if (
+                plausibilityIssues.length >
+                0
+            ) {
+
+                result.plausibilityCount++;
+
+
+                plausibilityIssues.forEach(
+                    function (problem) {
+
+                        item.problems.push(
+                            problem
+                        );
+
+                    }
+                );
+
+            }
+
+
+            // ==================================================
             // TESTZEIT
-            // ==========================================
-
-            var testStatus =
-                null;
-
+            // ==================================================
 
             if (
                 hasValue(
@@ -1147,25 +1484,11 @@ function buildResult(
                 )
             ) {
 
-                /*
-                 * Jede gesetzte Testzeit
-                 * zählt als aktive Testzeit.
-                 *
-                 * Auch:
-                 * - bald ablaufend
-                 * - bereits abgelaufen
-                 */
-
                 result.testCount++;
 
 
-                testStatus =
-                    getTestStatus(
-                        values.testUntil
-                    );
-
-
                 if (testStatus) {
+
 
                     if (
                         testStatus.id ===
@@ -1202,6 +1525,9 @@ function buildResult(
                         card:
                             card,
 
+                        item:
+                            item,
+
                         date:
                             values.testUntil,
 
@@ -1210,29 +1536,71 @@ function buildResult(
 
                     });
 
+
+                    // BALD ABLAUFEND
+
+                    if (
+                        testStatus.id ===
+                        'soon'
+                    ) {
+
+                        item.problems.push({
+
+                            kind:
+                                'test-soon',
+
+                            text:
+                                'Testzeit läuft bald ab',
+
+                            severity:
+                                'warning',
+
+                            priority:
+                                60
+
+                        });
+
+                    }
+
+
+                    // ABGELAUFEN
+
+                    if (
+                        testStatus.id ===
+                        'expired'
+                    ) {
+
+                        item.problems.push({
+
+                            kind:
+                                'test-expired',
+
+                            text:
+                                'Testzeit abgelaufen',
+
+                            severity:
+                                'error',
+
+                            priority:
+                                90
+
+                        });
+
+                    }
+
                 }
 
             }
 
 
-            // ==========================================
+            // ==================================================
             // ID SAMMELN
-            // ==========================================
+            // ==================================================
 
-            if (
-                hasValue(
-                    values.ctId
-                )
-            ) {
+            if (ctId) {
 
                 var normalizedId =
-                    String(
-                        values.ctId
-                    )
-
-                    .trim()
-
-                    .toLowerCase();
+                    ctId.toLowerCase();
 
 
                 if (
@@ -1246,11 +1614,9 @@ function buildResult(
                     ] = {
 
                         display:
-                            String(
-                                values.ctId
-                            ).trim(),
+                            ctId,
 
-                        cards:
+                        items:
                             []
 
                     };
@@ -1260,101 +1626,16 @@ function buildResult(
 
                 ids[
                     normalizedId
-                ].cards.push(
-                    card
+                ].items.push(
+                    item
                 );
 
             }
 
 
-            // ==========================================
-            // AUFFÄLLIGKEITEN
-            // ==========================================
-
-            var problems =
-                [];
-
-
-            missing.forEach(
-                function (name) {
-
-                    problems.push({
-
-                        text:
-                            name +
-                            ' fehlt',
-
-                        type:
-                            'error'
-
-                    });
-
-                }
+            result.items.push(
+                item
             );
-
-
-            if (plausibility) {
-
-                problems.push({
-
-                    text:
-                        'Plausibilitätsfehler',
-
-                    type:
-                        'warning'
-
-                });
-
-            }
-
-
-            if (
-                testStatus &&
-                testStatus.id ===
-                'soon'
-            ) {
-
-                problems.push({
-
-                    text:
-                        'Testzeit läuft bald ab',
-
-                    type:
-                        'warning'
-
-                });
-
-            }
-
-
-            if (
-                testStatus &&
-                testStatus.id ===
-                'expired'
-            ) {
-
-                problems.push({
-
-                    text:
-                        'Testzeit abgelaufen',
-
-                    type:
-                        'error'
-
-                });
-
-            }
-
-
-            result.issues.push({
-
-                card:
-                    card,
-
-                problems:
-                    problems
-
-            });
 
         }
     );
@@ -1374,7 +1655,8 @@ function buildResult(
 
 
             if (
-                group.cards.length <= 1
+                group.items.length <=
+                1
             ) {
 
                 return;
@@ -1387,46 +1669,34 @@ function buildResult(
                 id:
                     group.display,
 
-                cards:
-                    group.cards
+                items:
+                    group.items
 
             });
 
 
-            /*
-             * Bei allen betroffenen Karten
-             * zusätzlich als Auffälligkeit.
-             */
+            group.items.forEach(
+                function (item) {
 
-            group.cards.forEach(
-                function (card) {
-
-                    var issue =
-                        result.issues.find(
-                            function (entry) {
-
-                                return (
-                                    entry.card.id ===
-                                    card.id
-                                );
-
-                            }
-                        );
+                    item.duplicateId =
+                        true;
 
 
-                    if (issue) {
+                    item.problems.push({
 
-                        issue.problems.push({
+                        kind:
+                            'duplicate-id',
 
-                            text:
-                                'ID doppelt vergeben',
+                        text:
+                            'ID doppelt vergeben',
 
-                            type:
-                                'error'
+                        severity:
+                            'error',
 
-                        });
+                        priority:
+                            100
 
-                    }
+                    });
 
                 }
             );
@@ -1436,15 +1706,15 @@ function buildResult(
 
 
     // ==================================================
-    // NUR KARTEN MIT AUFFÄLLIGKEIT
+    // AUFFÄLLIGKEITEN
     // ==================================================
 
     result.issues =
-        result.issues.filter(
-            function (issue) {
+        result.items.filter(
+            function (item) {
 
                 return (
-                    issue.problems.length >
+                    item.problems.length >
                     0
                 );
 
@@ -1452,65 +1722,102 @@ function buildResult(
         );
 
 
-    // ==================================================
-    // RANGVERTEILUNG
-    // ==================================================
+    /*
+     * Priorität:
+     *
+     * 100 doppelte ID
+     * 90  Testzeit abgelaufen
+     * 75  Liste <-> Rang
+     * 70  Rang <-> Position
+     * 60  Testzeit bald
+     * 20  Pflichtfeld fehlt
+     */
 
-    result.ranks =
-        Object.keys(
-            rankMap
-        ).map(
-            function (key) {
+    result.issues.sort(
+        function (
+            a,
+            b
+        ) {
 
-                return rankMap[
-                    key
-                ];
-
-            }
-        );
-
-
-    // ==================================================
-    // TESTZEITEN SORTIEREN
-    // ==================================================
-
-    var statusWeight = {
-
-        expired:
-            0,
-
-        soon:
-            1,
-
-        running:
-            2
-
-    };
+            var aPriority =
+                getItemPriority(
+                    a
+                );
 
 
-    result.tests.sort(
-        function (a, b) {
-
-            var weightA =
-                statusWeight[
-                    a.status.id
-                ];
-
-
-            var weightB =
-                statusWeight[
-                    b.status.id
-                ];
+            var bPriority =
+                getItemPriority(
+                    b
+                );
 
 
             if (
-                weightA !==
-                weightB
+                aPriority !==
+                bPriority
             ) {
 
                 return (
-                    weightA -
-                    weightB
+                    bPriority -
+                    aPriority
+                );
+
+            }
+
+
+            return a.card.name.localeCompare(
+                b.card.name,
+                'de'
+            );
+
+        }
+    );
+
+
+    // ==================================================
+    // TESTZEIT SORTIEREN
+    // ==================================================
+
+    result.tests.sort(
+        function (
+            a,
+            b
+        ) {
+
+            var weights = {
+
+                expired:
+                    0,
+
+                soon:
+                    1,
+
+                running:
+                    2
+
+            };
+
+
+            if (
+                weights[
+                    a.status.id
+                ] !==
+                weights[
+                    b.status.id
+                ]
+            ) {
+
+                return (
+
+                    weights[
+                        a.status.id
+                    ]
+
+                    -
+
+                    weights[
+                        b.status.id
+                    ]
+
                 );
 
             }
@@ -1534,84 +1841,346 @@ function buildResult(
     );
 
 
+    // ==================================================
+    // VERTEILUNGEN
+    // ==================================================
+
+    result.ranks =
+        Object.keys(
+            rankMap
+        ).map(
+            function (key) {
+
+                return rankMap[
+                    key
+                ];
+
+            }
+        );
+
+
+    result.units =
+        Object.keys(
+            unitMap
+        ).map(
+            function (key) {
+
+                return unitMap[
+                    key
+                ];
+
+            }
+        );
+
+
+    result.items.sort(
+        function (
+            a,
+            b
+        ) {
+
+            return a.card.name.localeCompare(
+                b.card.name,
+                'de'
+            );
+
+        }
+    );
+
+
     return result;
+
 }
 
 
 // ======================================================
-// HAUPT-RENDER
+// PRIORITÄT
+// ======================================================
+
+function getItemPriority(item) {
+
+    if (
+        !item.problems ||
+        item.problems.length === 0
+    ) {
+
+        return 0;
+
+    }
+
+
+    return Math.max.apply(
+
+        null,
+
+        item.problems.map(
+            function (problem) {
+
+                return (
+                    problem.priority ||
+                    0
+                );
+
+            }
+        )
+
+    );
+
+}
+
+
+// ======================================================
+// SUCHE
+// ======================================================
+
+function matchesSearch(item) {
+
+    var query =
+        state.search
+            .trim()
+            .toLowerCase();
+
+
+    if (!query) {
+        return true;
+    }
+
+
+    var name =
+        String(
+            item.card.name ||
+            ''
+        ).toLowerCase();
+
+
+    var id =
+        String(
+            item.ctId ||
+            ''
+        ).toLowerCase();
+
+
+    return (
+
+        name.indexOf(
+            query
+        ) !== -1
+
+        ||
+
+        id.indexOf(
+            query
+        ) !== -1
+
+    );
+
+}
+
+
+// ======================================================
+// KPI FILTER
+// ======================================================
+
+function matchesFilter(item) {
+
+    if (
+        state.filter ===
+        'members'
+    ) {
+
+        return item.isMember;
+
+    }
+
+
+    if (
+        state.filter ===
+        'tests'
+    ) {
+
+        return hasValue(
+            item.values.testUntil
+        );
+
+    }
+
+
+    if (
+        state.filter ===
+        'incomplete'
+    ) {
+
+        return (
+            item.missing.length >
+            0
+        );
+
+    }
+
+
+    if (
+        state.filter ===
+        'plausibility'
+    ) {
+
+        return (
+            item.plausibilityIssues.length >
+            0
+        );
+
+    }
+
+
+    return true;
+
+}
+
+
+// ======================================================
+// FILTERED ITEMS
+// ======================================================
+
+function getFilteredItems() {
+
+    if (!state.result) {
+
+        return [];
+
+    }
+
+
+    return state.result.items.filter(
+        function (item) {
+
+            return (
+
+                matchesSearch(
+                    item
+                )
+
+                &&
+
+                matchesFilter(
+                    item
+                )
+
+            );
+
+        }
+    );
+
+}
+
+
+function getVisibleItemIds() {
+
+    var ids =
+        {};
+
+
+    getFilteredItems().forEach(
+        function (item) {
+
+            ids[
+                item.card.id
+            ] =
+                true;
+
+        }
+    );
+
+
+    return ids;
+
+}
+
+
+// ======================================================
+// HAUPT RENDER
 // ======================================================
 
 function renderResult(result) {
 
-    memberCount.textContent =
+    els.memberCount.textContent =
         result.memberCount;
 
 
-    testCount.textContent =
+    els.testCount.textContent =
         result.testCount;
 
 
-    incompleteCount.textContent =
+    els.incompleteCount.textContent =
         result.incompleteCount;
 
 
-    plausibilityCount.textContent =
+    els.plausibilityCount.textContent =
         result.plausibilityCount;
 
 
-    testRunningCount.textContent =
+    els.testRunningCount.textContent =
         result.testRunning;
 
 
-    testSoonCount.textContent =
+    els.testSoonCount.textContent =
         result.testSoon;
 
 
-    testExpiredCount.textContent =
+    els.testExpiredCount.textContent =
         result.testExpired;
 
 
-    renderRanks(
-        result.ranks
+    renderDistribution(
+
+        result.ranks,
+
+        els.rankDistribution,
+
+        'Keine Ränge konfiguriert.'
+
     );
 
 
-    renderTests(
-        result.tests
+    renderDistribution(
+
+        result.units,
+
+        els.unitDistribution,
+
+        'Keine Untereinheiten konfiguriert.'
+
     );
 
 
-    renderIssues(
-        result.issues
-    );
+    renderFilteredViews();
 
-
-    renderDuplicates(
-        result.duplicateIds
-    );
 }
 
 
 // ======================================================
-// RANGVERTEILUNG
+// VERTEILUNG RENDERN
 // ======================================================
 
-function renderRanks(ranks) {
+function renderDistribution(
+    items,
+    container,
+    emptyText
+) {
 
-    rankDistribution.innerHTML =
+    container.innerHTML =
         '';
 
 
     if (
-        ranks.length === 0
+        !items.length
     ) {
 
-        rankDistribution.innerHTML =
+        container.innerHTML =
 
             '<div class="empty">' +
 
-                'Keine Ränge konfiguriert.' +
+                escapeHtml(
+                    emptyText
+                ) +
 
             '</div>';
 
@@ -1626,10 +2195,10 @@ function renderRanks(ranks) {
 
             null,
 
-            ranks.map(
-                function (rank) {
+            items.map(
+                function (item) {
 
-                    return rank.count;
+                    return item.count;
 
                 }
             )
@@ -1641,15 +2210,8 @@ function renderRanks(ranks) {
         );
 
 
-    ranks.forEach(
-        function (rank) {
-
-            var width =
-                (
-                    rank.count /
-                    max
-                ) * 100;
-
+    items.forEach(
+        function (item) {
 
             var row =
                 document.createElement(
@@ -1658,46 +2220,413 @@ function renderRanks(ranks) {
 
 
             row.className =
-                'rank-row';
+                'distribution-row';
+
+
+            var width =
+                (
+                    item.count /
+                    max
+                ) * 100;
 
 
             row.innerHTML =
 
-                '<div class="rank-name">' +
+                '<div ' +
+
+                    'class="distribution-name" ' +
+
+                    'title="' +
+                    escapeHtml(
+                        item.label
+                    ) +
+                    '">' +
 
                     escapeHtml(
-                        rank.label
+                        item.label
                     ) +
 
                 '</div>' +
 
 
-                '<div class="rank-track">' +
+                '<div class="distribution-track">' +
 
-                    '<div class="rank-fill" ' +
+                    '<div ' +
 
-                        'style="width:' +
-                        width +
-                        '%">' +
+                        'class="distribution-fill" ' +
+
+                        'style="' +
+
+                            'width:' +
+                            width +
+                            '%;' +
+
+                            'background:' +
+                            getCtColorHex(
+                                item.color
+                            ) +
+
+                        '">' +
 
                     '</div>' +
 
                 '</div>' +
 
 
-                '<div class="rank-count">' +
+                '<div class="distribution-count">' +
 
-                    rank.count +
+                    item.count +
 
                 '</div>';
 
 
-            rankDistribution.appendChild(
+            container.appendChild(
                 row
             );
 
         }
     );
+
+}
+
+
+// ======================================================
+// FILTERED VIEWS
+// ======================================================
+
+function renderFilteredViews() {
+
+    if (!state.result) {
+        return;
+    }
+
+
+    updateKpiState();
+
+    updateFilterInfo();
+
+
+    var visibleIds =
+        getVisibleItemIds();
+
+
+    renderFilteredCards(
+        getFilteredItems()
+    );
+
+
+    renderTests(
+
+        state.result.tests.filter(
+            function (test) {
+
+                return visibleIds[
+                    test.card.id
+                ];
+
+            }
+        )
+
+    );
+
+
+    renderIssues(
+
+        state.result.issues.filter(
+            function (item) {
+
+                return visibleIds[
+                    item.card.id
+                ];
+
+            }
+        )
+
+    );
+
+
+    renderDuplicates(
+
+        state.result.duplicateIds,
+
+        visibleIds
+
+    );
+
+}
+
+
+// ======================================================
+// KPI ACTIVE STYLE
+// ======================================================
+
+function updateKpiState() {
+
+    document.querySelectorAll(
+        '.stat-card[data-filter]'
+    ).forEach(
+        function (card) {
+
+            card.classList.toggle(
+
+                'active',
+
+                card.getAttribute(
+                    'data-filter'
+                ) ===
+                state.filter
+
+            );
+
+        }
+    );
+
+}
+
+
+// ======================================================
+// FILTER INFO
+// ======================================================
+
+function updateFilterInfo() {
+
+    var labels = {
+
+        members:
+            'Mitglieder gesamt',
+
+        tests:
+            'Aktive Testzeiten',
+
+        incomplete:
+            'Unvollständige Karten',
+
+        plausibility:
+            'Plausibilitätsfehler'
+
+    };
+
+
+    var parts =
+        [];
+
+
+    if (
+        state.filter !==
+        'all'
+    ) {
+
+        parts.push(
+            'Filter: ' +
+            labels[
+                state.filter
+            ]
+        );
+
+    }
+
+
+    if (
+        state.search
+    ) {
+
+        parts.push(
+            'Suche: „' +
+            state.search +
+            '“'
+        );
+
+    }
+
+
+    if (
+        !parts.length
+    ) {
+
+        els.filterInfo.classList.remove(
+            'visible'
+        );
+
+
+        els.filterInfo.textContent =
+            '';
+
+
+        return;
+
+    }
+
+
+    els.filterInfo.textContent =
+
+        parts.join(
+            ' · '
+        )
+
+        +
+
+        ' · '
+
+        +
+
+        getFilteredItems().length
+
+        +
+
+        ' Karte(n)';
+
+
+    els.filterInfo.classList.add(
+        'visible'
+    );
+
+}
+
+
+// ======================================================
+// FILTERERGEBNISSE
+// ======================================================
+
+function renderFilteredCards(items) {
+
+    var shouldShow =
+
+        state.filter !==
+        'all'
+
+        ||
+
+        state.search.length >
+        0;
+
+
+    els.filteredPanel.style.display =
+        shouldShow
+            ? 'block'
+            : 'none';
+
+
+    if (!shouldShow) {
+
+        return;
+
+    }
+
+
+    els.filteredTitle.textContent =
+
+        state.search
+            ? 'Such-/Filterergebnisse'
+            : 'Gefilterte Karten';
+
+
+    els.filteredRows.innerHTML =
+        '';
+
+
+    if (
+        !items.length
+    ) {
+
+        els.filteredRows.innerHTML =
+
+            '<div class="empty">' +
+
+                'Keine passenden Karten gefunden.' +
+
+            '</div>';
+
+
+        return;
+
+    }
+
+
+    items.forEach(
+        function (item) {
+
+            var row =
+                document.createElement(
+                    'div'
+                );
+
+
+            row.className =
+                'card-result-row';
+
+
+            var meta =
+                [];
+
+
+            if (
+                item.ctId
+            ) {
+
+                meta.push(
+                    'ID ' +
+                    item.ctId
+                );
+
+            }
+
+
+            meta.push(
+                item.list.name
+            );
+
+
+            row.innerHTML =
+
+                '<div>' +
+
+                    '<div class="card-name">' +
+
+                        escapeHtml(
+                            item.card.name
+                        ) +
+
+                    '</div>' +
+
+                    '<div class="subtext">' +
+
+                        escapeHtml(
+                            meta.join(
+                                ' · '
+                            )
+                        ) +
+
+                    '</div>' +
+
+                '</div>' +
+
+
+                '<span class="open-hint">' +
+
+                    'Öffnen ›' +
+
+                '</span>';
+
+
+            row.addEventListener(
+                'click',
+                function () {
+
+                    openCard(
+                        item.card
+                    );
+
+                }
+            );
+
+
+            els.filteredRows.appendChild(
+                row
+            );
+
+        }
+    );
+
 }
 
 
@@ -1707,19 +2636,19 @@ function renderRanks(ranks) {
 
 function renderTests(tests) {
 
-    testRows.innerHTML =
+    els.testRows.innerHTML =
         '';
 
 
     if (
-        tests.length === 0
+        !tests.length
     ) {
 
-        testRows.innerHTML =
+        els.testRows.innerHTML =
 
             '<div class="empty">' +
 
-                'Keine aktiven Testzeiten.' +
+                'Keine passenden Testzeiten.' +
 
             '</div>';
 
@@ -1782,8 +2711,10 @@ function renderTests(tests) {
 
                     '<div class="subtext">' +
 
-                        formatDate(
-                            item.date
+                        escapeHtml(
+                            formatDate(
+                                item.date
+                            )
                         ) +
 
                     '</div>' +
@@ -1814,12 +2745,44 @@ function renderTests(tests) {
             );
 
 
-            testRows.appendChild(
+            els.testRows.appendChild(
                 row
             );
 
         }
     );
+
+}
+
+
+// ======================================================
+// ISSUE CLASS
+// ======================================================
+
+function getIssueClass(problem) {
+
+    if (
+        problem.severity ===
+        'error'
+    ) {
+
+        return 'issue-error';
+
+    }
+
+
+    if (
+        problem.severity ===
+        'warning'
+    ) {
+
+        return 'issue-warning';
+
+    }
+
+
+    return 'issue-muted';
+
 }
 
 
@@ -1829,19 +2792,23 @@ function renderTests(tests) {
 
 function renderIssues(issues) {
 
-    issueRows.innerHTML =
+    els.issueRows.innerHTML =
         '';
 
 
+    els.copyIssuesButton.disabled =
+        issues.length === 0;
+
+
     if (
-        issues.length === 0
+        !issues.length
     ) {
 
-        issueRows.innerHTML =
+        els.issueRows.innerHTML =
 
             '<div class="empty">' +
 
-                '✓ Keine Auffälligkeiten gefunden.' +
+                '✓ Keine passenden Auffälligkeiten gefunden.' +
 
             '</div>';
 
@@ -1865,18 +2832,44 @@ function renderIssues(issues) {
 
 
             var tags =
-                item.problems.map(
+                item.problems
+
+                .slice()
+
+                .sort(
+                    function (
+                        a,
+                        b
+                    ) {
+
+                        return (
+
+                            (
+                                b.priority ||
+                                0
+                            )
+
+                            -
+
+                            (
+                                a.priority ||
+                                0
+                            )
+
+                        );
+
+                    }
+                )
+
+                .map(
                     function (problem) {
 
                         return (
 
                             '<span class="issue ' +
 
-                                (
-                                    problem.type ===
-                                    'error'
-                                        ? 'error'
-                                        : ''
+                                getIssueClass(
+                                    problem
                                 ) +
 
                             '">' +
@@ -1895,13 +2888,38 @@ function renderIssues(issues) {
                 .join('');
 
 
+            var meta =
+                item.ctId
+
+                    ? (
+                        'ID ' +
+                        item.ctId +
+                        ' · ' +
+                        item.list.name
+                    )
+
+                    : item.list.name;
+
+
             row.innerHTML =
 
-                '<div class="card-name">' +
+                '<div>' +
 
-                    escapeHtml(
-                        item.card.name
-                    ) +
+                    '<div class="card-name">' +
+
+                        escapeHtml(
+                            item.card.name
+                        ) +
+
+                    '</div>' +
+
+                    '<div class="subtext">' +
+
+                        escapeHtml(
+                            meta
+                        ) +
+
+                    '</div>' +
 
                 '</div>' +
 
@@ -1925,12 +2943,13 @@ function renderIssues(issues) {
             );
 
 
-            issueRows.appendChild(
+            els.issueRows.appendChild(
                 row
             );
 
         }
     );
+
 }
 
 
@@ -1938,21 +2957,61 @@ function renderIssues(issues) {
 // DOPPELTE IDS
 // ======================================================
 
-function renderDuplicates(groups) {
+function renderDuplicates(
+    groups,
+    visibleIds
+) {
 
-    duplicateRows.innerHTML =
+    els.duplicateRows.innerHTML =
         '';
 
 
+    var visibleGroups =
+        groups.map(
+            function (group) {
+
+                return {
+
+                    id:
+                        group.id,
+
+                    items:
+                        group.items.filter(
+                            function (item) {
+
+                                return visibleIds[
+                                    item.card.id
+                                ];
+
+                            }
+                        )
+
+                };
+
+            }
+        )
+
+        .filter(
+            function (group) {
+
+                return (
+                    group.items.length >
+                    0
+                );
+
+            }
+        );
+
+
     if (
-        groups.length === 0
+        !visibleGroups.length
     ) {
 
-        duplicateRows.innerHTML =
+        els.duplicateRows.innerHTML =
 
             '<div class="empty">' +
 
-                '✓ Keine doppelten IDs gefunden.' +
+                '✓ Keine passenden doppelten IDs gefunden.' +
 
             '</div>';
 
@@ -1962,7 +3021,7 @@ function renderDuplicates(groups) {
     }
 
 
-    groups.forEach(
+    visibleGroups.forEach(
         function (group) {
 
             var wrapper =
@@ -1995,29 +3054,33 @@ function renderDuplicates(groups) {
             );
 
 
-            group.cards.forEach(
-                function (card) {
+            group.items.forEach(
+                function (item) {
 
-                    var cardButton =
+                    var button =
                         document.createElement(
-                            'span'
+                            'button'
                         );
 
 
-                    cardButton.className =
+                    button.type =
+                        'button';
+
+
+                    button.className =
                         'duplicate-card';
 
 
-                    cardButton.textContent =
-                        card.name;
+                    button.textContent =
+                        item.card.name;
 
 
-                    cardButton.addEventListener(
+                    button.addEventListener(
                         'click',
                         function () {
 
                             openCard(
-                                card
+                                item.card
                             );
 
                         }
@@ -2025,19 +3088,299 @@ function renderDuplicates(groups) {
 
 
                     wrapper.appendChild(
-                        cardButton
+                        button
                     );
 
                 }
             );
 
 
-            duplicateRows.appendChild(
+            els.duplicateRows.appendChild(
                 wrapper
             );
 
         }
     );
+
+}
+
+
+// ======================================================
+// SICHTBARE AUFFÄLLIGKEITEN
+// ======================================================
+
+function getVisibleIssues() {
+
+    if (!state.result) {
+
+        return [];
+
+    }
+
+
+    var visibleIds =
+        getVisibleItemIds();
+
+
+    return state.result.issues.filter(
+        function (item) {
+
+            return visibleIds[
+                item.card.id
+            ];
+
+        }
+    );
+
+}
+
+
+// ======================================================
+// DISCORD TEXT
+// ======================================================
+
+function buildDiscordIssueText(issues) {
+
+    var lines =
+        [];
+
+
+    lines.push(
+        '**CT Auffälligkeiten**'
+    );
+
+
+    lines.push(
+
+        'Stand: ' +
+
+        new Date()
+            .toLocaleString(
+                'de-AT'
+            )
+
+    );
+
+
+    lines.push(
+        ''
+    );
+
+
+    issues.forEach(
+        function (item) {
+
+            var idText =
+                item.ctId
+
+                    ? (
+                        ' | ID ' +
+                        item.ctId
+                    )
+
+                    : '';
+
+
+            lines.push(
+
+                '**' +
+                item.card.name +
+                '**' +
+                idText
+
+            );
+
+
+            item.problems
+
+                .slice()
+
+                .sort(
+                    function (
+                        a,
+                        b
+                    ) {
+
+                        return (
+
+                            (
+                                b.priority ||
+                                0
+                            )
+
+                            -
+
+                            (
+                                a.priority ||
+                                0
+                            )
+
+                        );
+
+                    }
+                )
+
+                .forEach(
+                    function (problem) {
+
+                        var symbol =
+
+                            problem.severity ===
+                            'error'
+
+                                ? '🔴'
+
+                                : (
+                                    problem.severity ===
+                                    'warning'
+
+                                        ? '⚠️'
+
+                                        : '•'
+                                );
+
+
+                        lines.push(
+
+                            symbol +
+                            ' ' +
+                            problem.text
+
+                        );
+
+                    }
+                );
+
+
+            lines.push(
+                ''
+            );
+
+        }
+    );
+
+
+    return lines
+        .join('\n')
+        .trim();
+
+}
+
+
+// ======================================================
+// COPY
+// ======================================================
+
+function copyText(text) {
+
+    if (
+        navigator.clipboard &&
+        navigator.clipboard.writeText
+    ) {
+
+        return navigator.clipboard.writeText(
+            text
+        );
+
+    }
+
+
+    return new Promise(
+        function (
+            resolve,
+            reject
+        ) {
+
+            try {
+
+                var textarea =
+                    document.createElement(
+                        'textarea'
+                    );
+
+
+                textarea.value =
+                    text;
+
+
+                textarea.style.position =
+                    'fixed';
+
+
+                textarea.style.opacity =
+                    '0';
+
+
+                document.body.appendChild(
+                    textarea
+                );
+
+
+                textarea.focus();
+
+                textarea.select();
+
+
+                var ok =
+                    document.execCommand(
+                        'copy'
+                    );
+
+
+                document.body.removeChild(
+                    textarea
+                );
+
+
+                if (!ok) {
+
+                    throw new Error(
+                        'copy-failed'
+                    );
+
+                }
+
+
+                resolve();
+
+            } catch (error) {
+
+                reject(
+                    error
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+// ======================================================
+// COPY BUTTON FEEDBACK
+// ======================================================
+
+function flashCopyButton(text) {
+
+    var original =
+        'Auffälligkeiten kopieren';
+
+
+    els.copyIssuesButton.textContent =
+        text;
+
+
+    setTimeout(
+        function () {
+
+            els.copyIssuesButton.textContent =
+                original;
+
+        },
+        1800
+    );
+
 }
 
 
@@ -2045,22 +3388,50 @@ function renderDuplicates(groups) {
 // DASHBOARD LADEN
 // ======================================================
 
-function loadDashboard() {
+function loadDashboard(options) {
 
-    loading.style.display =
-        'block';
-
-
-    dashboard.style.display =
-        'none';
+    options =
+        options || {};
 
 
-    errorBox.style.display =
-        'none';
+    if (
+        state.loading
+    ) {
+
+        return Promise.resolve();
+
+    }
 
 
-    refreshButton.disabled =
+    state.loading =
         true;
+
+
+    els.refreshButton.disabled =
+        true;
+
+
+    els.error.style.display =
+        'none';
+
+
+    /*
+     * Beim Auto-Refresh bleibt das Dashboard sichtbar.
+     */
+
+    if (
+        !options.silent ||
+        !state.result
+    ) {
+
+        els.loading.style.display =
+            'block';
+
+
+        els.dashboard.style.display =
+            'none';
+
+    }
 
 
     return Promise.all([
@@ -2085,7 +3456,9 @@ function loadDashboard() {
             'name'
         )
 
-    ]).then(
+    ])
+
+    .then(
         function (values) {
 
             var schema =
@@ -2094,44 +3467,62 @@ function loadDashboard() {
                 );
 
 
-            var cards =
-                values[1] ||
-                [];
-
-
-            var lists =
-                values[2] ||
-                [];
-
-
             return analyze(
+
                 schema,
-                cards,
-                lists
+
+                values[1] ||
+                [],
+
+                values[2] ||
+                []
+
             );
 
         }
-    ).then(
+    )
+
+    .then(
         function (result) {
+
+            state.result =
+                result;
+
+
+            state.lastUpdated =
+                new Date();
+
+
+            state.nextRefreshAt =
+                Date.now() +
+                AUTO_REFRESH_MS;
+
 
             renderResult(
                 result
             );
 
 
-            loading.style.display =
+            els.lastUpdated.textContent =
+
+                'Zuletzt aktualisiert: ' +
+
+                formatTime(
+                    state.lastUpdated
+                );
+
+
+            els.loading.style.display =
                 'none';
 
 
-            dashboard.style.display =
+            els.dashboard.style.display =
                 'block';
 
-
-            refreshButton.disabled =
-                false;
-
         }
-    ).catch(
+    )
+
+    .catch(
         function (error) {
 
             console.error(
@@ -2140,17 +3531,11 @@ function loadDashboard() {
             );
 
 
-            loading.style.display =
-                'none';
+            els.error.textContent =
 
+                'CT Overview konnte nicht geladen werden: '
 
-            dashboard.style.display =
-                'none';
-
-
-            errorBox.textContent =
-
-                'CT Overview konnte nicht geladen werden: ' +
+                +
 
                 (
                     error.message ||
@@ -2158,30 +3543,320 @@ function loadDashboard() {
                 );
 
 
-            errorBox.style.display =
+            els.error.style.display =
                 'block';
 
 
-            refreshButton.disabled =
+            els.loading.style.display =
+                'none';
+
+
+            /*
+             * Wenn bereits alte Daten vorhanden sind,
+             * bleiben sie bei einem Auto-Refresh sichtbar.
+             */
+
+            if (
+                state.result
+            ) {
+
+                els.dashboard.style.display =
+                    'block';
+
+            }
+
+        }
+    )
+
+    .then(
+        function () {
+
+            state.loading =
+                false;
+
+
+            els.refreshButton.disabled =
                 false;
 
         }
     );
+
 }
 
 
 // ======================================================
-// REFRESH
+// AUTO REFRESH
 // ======================================================
 
-refreshButton.addEventListener(
+function updateAutoRefreshInfo() {
+
+    if (
+        !state.nextRefreshAt
+    ) {
+
+        els.autoRefreshInfo.textContent =
+            'Auto-Refresh: 60 s';
+
+
+        return;
+
+    }
+
+
+    var seconds =
+        Math.max(
+
+            0,
+
+            Math.ceil(
+
+                (
+                    state.nextRefreshAt -
+                    Date.now()
+                )
+
+                /
+
+                1000
+
+            )
+
+        );
+
+
+    els.autoRefreshInfo.textContent =
+
+        'Auto-Refresh in ' +
+        seconds +
+        ' s';
+
+
+    if (
+        seconds <= 0 &&
+        !state.loading
+    ) {
+
+        loadDashboard({
+
+            silent:
+                true
+
+        });
+
+    }
+
+}
+
+
+// ======================================================
+// MANUELL REFRESH
+// ======================================================
+
+els.refreshButton.addEventListener(
     'click',
-    loadDashboard
+    function () {
+
+        loadDashboard({
+
+            silent:
+                !!state.result
+
+        });
+
+    }
+);
+
+
+// ======================================================
+// SUCHE
+// ======================================================
+
+els.searchInput.addEventListener(
+    'input',
+    function () {
+
+        state.search =
+            els.searchInput.value
+                .trim();
+
+
+        els.clearSearchButton.style.visibility =
+
+            state.search
+                ? 'visible'
+                : 'hidden';
+
+
+        renderFilteredViews();
+
+    }
+);
+
+
+els.clearSearchButton.addEventListener(
+    'click',
+    function () {
+
+        els.searchInput.value =
+            '';
+
+
+        state.search =
+            '';
+
+
+        els.clearSearchButton.style.visibility =
+            'hidden';
+
+
+        renderFilteredViews();
+
+
+        els.searchInput.focus();
+
+    }
+);
+
+
+// ======================================================
+// KPI KLICK
+// ======================================================
+
+document.querySelectorAll(
+    '.stat-card[data-filter]'
+).forEach(
+    function (card) {
+
+        card.addEventListener(
+            'click',
+            function () {
+
+                var selected =
+                    card.getAttribute(
+                        'data-filter'
+                    );
+
+
+                /*
+                 * Nochmal auf dieselbe Kachel:
+                 * Filter ausschalten.
+                 */
+
+                state.filter =
+
+                    state.filter ===
+                    selected
+
+                        ? 'all'
+
+                        : selected;
+
+
+                renderFilteredViews();
+
+            }
+        );
+
+
+        card.addEventListener(
+            'keydown',
+            function (event) {
+
+                if (
+                    event.key ===
+                    'Enter'
+
+                    ||
+
+                    event.key ===
+                    ' '
+                ) {
+
+                    event.preventDefault();
+
+
+                    card.click();
+
+                }
+
+            }
+        );
+
+    }
+);
+
+
+// ======================================================
+// AUFFÄLLIGKEITEN KOPIEREN
+// ======================================================
+
+els.copyIssuesButton.addEventListener(
+    'click',
+    function () {
+
+        var issues =
+            getVisibleIssues();
+
+
+        if (
+            !issues.length
+        ) {
+
+            return;
+
+        }
+
+
+        copyText(
+
+            buildDiscordIssueText(
+                issues
+            )
+
+        )
+
+        .then(
+            function () {
+
+                flashCopyButton(
+                    'Kopiert ✓'
+                );
+
+            }
+        )
+
+        .catch(
+            function (error) {
+
+                console.error(
+                    'CT Dashboard Copy Error:',
+                    error
+                );
+
+
+                flashCopyButton(
+                    'Kopieren fehlgeschlagen'
+                );
+
+            }
+        );
+
+    }
 );
 
 
 // ======================================================
 // START
 // ======================================================
+
+els.clearSearchButton.style.visibility =
+    'hidden';
+
+
+setInterval(
+    updateAutoRefreshInfo,
+    1000
+);
+
 
 loadDashboard();
