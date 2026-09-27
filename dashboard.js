@@ -3,7 +3,7 @@ var t =
 
 
 // ======================================================
-// ÜBERWACHTE LISTEN
+// ÜBERWACHTE RANGLISTEN
 // ======================================================
 
 var MONITORED_LISTS = [
@@ -26,13 +26,23 @@ var MONITORED_LISTS = [
 
     'captain',
 
-    'major'
+    'major',
+
+    'commander'
 
 ];
 
 
-// PFC wird überall geprüft,
-// aber NICHT als Mitglied gezählt.
+// ======================================================
+// MITGLIEDER-LISTEN
+// ======================================================
+
+/*
+ * Private First Class wird überall ausgewertet,
+ * zählt aber NICHT zu "Mitglieder gesamt".
+ *
+ * Commander wird ganz normal mitgezählt.
+ */
 
 var MEMBER_LISTS =
     MONITORED_LISTS.filter(
@@ -213,7 +223,7 @@ var els = {
 
 
 // ======================================================
-// LISTENNAME
+// LISTENNAME NORMALISIEREN
 // ======================================================
 
 function normalizeListName(name) {
@@ -233,7 +243,6 @@ function normalizeListName(name) {
         .trim()
 
         .toLowerCase();
-
 }
 
 
@@ -255,12 +264,11 @@ function getStoredValues(data) {
 
 
     return data || {};
-
 }
 
 
 // ======================================================
-// FIELD
+// FIELD FINDEN
 // ======================================================
 
 function getField(
@@ -289,7 +297,6 @@ function getField(
 
         }
     ) || null;
-
 }
 
 
@@ -310,7 +317,6 @@ function hasValue(value) {
             .length > 0
 
     );
-
 }
 
 
@@ -346,7 +352,6 @@ function escapeHtml(value) {
             /'/g,
             '&#039;'
         );
-
 }
 
 
@@ -357,7 +362,9 @@ function escapeHtml(value) {
 function parseDate(value) {
 
     if (!value) {
+
         return null;
+
     }
 
 
@@ -413,7 +420,6 @@ function parseDate(value) {
 
 
     return date;
-
 }
 
 
@@ -432,14 +438,15 @@ function getToday() {
 
 
     return today;
-
 }
 
 
 function formatDate(value) {
 
     if (!value) {
+
         return '';
+
     }
 
 
@@ -464,14 +471,15 @@ function formatDate(value) {
         '.' +
         parts[0]
     );
-
 }
 
 
 function formatTime(date) {
 
     if (!date) {
+
         return '–';
+
     }
 
 
@@ -488,7 +496,6 @@ function formatTime(date) {
                 '2-digit'
         }
     );
-
 }
 
 
@@ -505,7 +512,9 @@ function getTestStatus(value) {
 
 
     if (!date) {
+
         return null;
+
     }
 
 
@@ -524,7 +533,7 @@ function getTestStatus(value) {
         );
 
 
-    // ABGELAUFEN
+    // Bereits abgelaufen
 
     if (
         difference < 0
@@ -546,7 +555,7 @@ function getTestStatus(value) {
     }
 
 
-    // 0 - 3 TAGE
+    // Heute bis einschließlich 3 Tage
 
     if (
         difference <= 3
@@ -580,7 +589,6 @@ function getTestStatus(value) {
             difference
 
     };
-
 }
 
 
@@ -626,7 +634,6 @@ function getCtColorHex(color) {
         colors[color] ||
         colors['light-gray']
     );
-
 }
 
 
@@ -681,9 +688,7 @@ function getMissingFields(
 
 
     required.forEach(
-        function (
-            requiredField
-        ) {
+        function (requiredField) {
 
             if (
                 hasValue(
@@ -718,7 +723,6 @@ function getMissingFields(
 
 
     return missing;
-
 }
 
 
@@ -731,6 +735,10 @@ function getPlausibilityIssues(
     values,
     listName
 ) {
+
+    // ==================================================
+    // RANG -> POSITION
+    // ==================================================
 
     var positionRules = {
 
@@ -773,6 +781,10 @@ function getPlausibilityIssues(
     };
 
 
+    // ==================================================
+    // LISTE -> RANG
+    // ==================================================
+
     var listRules = {
 
         'private first class':
@@ -803,7 +815,10 @@ function getPlausibilityIssues(
             'captain',
 
         'major':
-            'major'
+            'major',
+
+        'commander':
+            'commander'
 
     };
 
@@ -841,7 +856,7 @@ function getPlausibilityIssues(
 
 
     /*
-     * Kein Rang oder unbekannter/custom Rang:
+     * Kein Rang oder ein custom Rang:
      * keine Plausibilitätsprüfung.
      */
 
@@ -931,7 +946,6 @@ function getPlausibilityIssues(
 
 
     return issues;
-
 }
 
 
@@ -968,7 +982,6 @@ function openCard(card) {
 
         }
     );
-
 }
 
 
@@ -1009,6 +1022,8 @@ function analyze(
         }
     );
 
+
+    // Nur Karten aus unseren Ranglisten
 
     var relevantCards =
         cards.filter(
@@ -1085,7 +1100,6 @@ function analyze(
 
         }
     );
-
 }
 
 
@@ -1241,7 +1255,7 @@ function buildResult(
 
 
     // ==================================================
-    // KARTEN
+    // KARTEN DURCHGEHEN
     // ==================================================
 
     sourceItems.forEach(
@@ -1258,6 +1272,13 @@ function buildResult(
             var listName =
                 source.list.normalized;
 
+
+            /*
+             * PFC = false
+             *
+             * Alle anderen überwachten Listen,
+             * inklusive Commander = true.
+             */
 
             var isMember =
                 MEMBER_LISTS.indexOf(
@@ -1366,7 +1387,7 @@ function buildResult(
 
 
             // ==================================================
-            // MITGLIEDER
+            // MITGLIEDER GESAMT
             // ==================================================
 
             if (isMember) {
@@ -1377,7 +1398,7 @@ function buildResult(
 
 
             // ==================================================
-            // RANG
+            // RANGVERTEILUNG
             // ==================================================
 
             if (
@@ -1395,7 +1416,7 @@ function buildResult(
 
 
             // ==================================================
-            // UNTEREINHEIT
+            // UNTEREINHEITEN
             // ==================================================
 
             if (
@@ -1413,7 +1434,7 @@ function buildResult(
 
 
             // ==================================================
-            // FEHLENDE PFLICHTFELDER
+            // UNVOLLSTÄNDIG
             // ==================================================
 
             if (
@@ -1484,11 +1505,18 @@ function buildResult(
                 )
             ) {
 
+                /*
+                 * Jede gesetzte Testzeit zählt:
+                 *
+                 * läuft
+                 * bald ablaufend
+                 * abgelaufen
+                 */
+
                 result.testCount++;
 
 
                 if (testStatus) {
-
 
                     if (
                         testStatus.id ===
@@ -1537,8 +1565,6 @@ function buildResult(
                     });
 
 
-                    // BALD ABLAUFEND
-
                     if (
                         testStatus.id ===
                         'soon'
@@ -1562,8 +1588,6 @@ function buildResult(
 
                     }
 
-
-                    // ABGELAUFEN
 
                     if (
                         testStatus.id ===
@@ -1655,8 +1679,7 @@ function buildResult(
 
 
             if (
-                group.items.length <=
-                1
+                group.items.length <= 1
             ) {
 
                 return;
@@ -1725,12 +1748,12 @@ function buildResult(
     /*
      * Priorität:
      *
-     * 100 doppelte ID
-     * 90  Testzeit abgelaufen
-     * 75  Liste <-> Rang
-     * 70  Rang <-> Position
-     * 60  Testzeit bald
-     * 20  Pflichtfeld fehlt
+     * 100 = Doppelte ID
+     * 90  = Testzeit abgelaufen
+     * 75  = Liste ↔ Rang
+     * 70  = Rang ↔ Position
+     * 60  = Testzeit läuft bald ab
+     * 20  = Pflichtfeld fehlt
      */
 
     result.issues.sort(
@@ -1774,7 +1797,7 @@ function buildResult(
 
 
     // ==================================================
-    // TESTZEIT SORTIEREN
+    // TESTZEITEN SORTIEREN
     // ==================================================
 
     result.tests.sort(
@@ -1889,7 +1912,6 @@ function buildResult(
 
 
     return result;
-
 }
 
 
@@ -1925,7 +1947,6 @@ function getItemPriority(item) {
         )
 
     );
-
 }
 
 
@@ -1942,7 +1963,9 @@ function matchesSearch(item) {
 
 
     if (!query) {
+
         return true;
+
     }
 
 
@@ -1973,7 +1996,6 @@ function matchesSearch(item) {
         ) !== -1
 
     );
-
 }
 
 
@@ -2032,12 +2054,11 @@ function matchesFilter(item) {
 
 
     return true;
-
 }
 
 
 // ======================================================
-// FILTERED ITEMS
+// GEFILTERTE ITEMS
 // ======================================================
 
 function getFilteredItems() {
@@ -2068,7 +2089,6 @@ function getFilteredItems() {
 
         }
     );
-
 }
 
 
@@ -2091,12 +2111,11 @@ function getVisibleItemIds() {
 
 
     return ids;
-
 }
 
 
 // ======================================================
-// HAUPT RENDER
+// HAUPT-RENDER
 // ======================================================
 
 function renderResult(result) {
@@ -2152,12 +2171,11 @@ function renderResult(result) {
 
 
     renderFilteredViews();
-
 }
 
 
 // ======================================================
-// VERTEILUNG RENDERN
+// VERTEILUNG
 // ======================================================
 
 function renderDistribution(
@@ -2170,9 +2188,7 @@ function renderDistribution(
         '';
 
 
-    if (
-        !items.length
-    ) {
+    if (!items.length) {
 
         container.innerHTML =
 
@@ -2286,18 +2302,19 @@ function renderDistribution(
 
         }
     );
-
 }
 
 
 // ======================================================
-// FILTERED VIEWS
+// FILTER VIEWS
 // ======================================================
 
 function renderFilteredViews() {
 
     if (!state.result) {
+
         return;
+
     }
 
 
@@ -2352,12 +2369,11 @@ function renderFilteredViews() {
         visibleIds
 
     );
-
 }
 
 
 // ======================================================
-// KPI ACTIVE STYLE
+// KPI STATUS
 // ======================================================
 
 function updateKpiState() {
@@ -2380,7 +2396,6 @@ function updateKpiState() {
 
         }
     );
-
 }
 
 
@@ -2426,9 +2441,7 @@ function updateFilterInfo() {
     }
 
 
-    if (
-        state.search
-    ) {
+    if (state.search) {
 
         parts.push(
             'Suche: „' +
@@ -2439,9 +2452,7 @@ function updateFilterInfo() {
     }
 
 
-    if (
-        !parts.length
-    ) {
+    if (!parts.length) {
 
         els.filterInfo.classList.remove(
             'visible'
@@ -2479,7 +2490,6 @@ function updateFilterInfo() {
     els.filterInfo.classList.add(
         'visible'
     );
-
 }
 
 
@@ -2524,9 +2534,7 @@ function renderFilteredCards(items) {
         '';
 
 
-    if (
-        !items.length
-    ) {
+    if (!items.length) {
 
         els.filteredRows.innerHTML =
 
@@ -2559,9 +2567,7 @@ function renderFilteredCards(items) {
                 [];
 
 
-            if (
-                item.ctId
-            ) {
+            if (item.ctId) {
 
                 meta.push(
                     'ID ' +
@@ -2626,7 +2632,6 @@ function renderFilteredCards(items) {
 
         }
     );
-
 }
 
 
@@ -2640,9 +2645,7 @@ function renderTests(tests) {
         '';
 
 
-    if (
-        !tests.length
-    ) {
+    if (!tests.length) {
 
         els.testRows.innerHTML =
 
@@ -2751,12 +2754,11 @@ function renderTests(tests) {
 
         }
     );
-
 }
 
 
 // ======================================================
-// ISSUE CLASS
+// ISSUE STYLE
 // ======================================================
 
 function getIssueClass(problem) {
@@ -2782,7 +2784,6 @@ function getIssueClass(problem) {
 
 
     return 'issue-muted';
-
 }
 
 
@@ -2800,9 +2801,7 @@ function renderIssues(issues) {
         issues.length === 0;
 
 
-    if (
-        !issues.length
-    ) {
+    if (!issues.length) {
 
         els.issueRows.innerHTML =
 
@@ -2949,7 +2948,6 @@ function renderIssues(issues) {
 
         }
     );
-
 }
 
 
@@ -3003,9 +3001,7 @@ function renderDuplicates(
         );
 
 
-    if (
-        !visibleGroups.length
-    ) {
+    if (!visibleGroups.length) {
 
         els.duplicateRows.innerHTML =
 
@@ -3101,7 +3097,6 @@ function renderDuplicates(
 
         }
     );
-
 }
 
 
@@ -3131,7 +3126,6 @@ function getVisibleIssues() {
 
         }
     );
-
 }
 
 
@@ -3263,7 +3257,6 @@ function buildDiscordIssueText(issues) {
     return lines
         .join('\n')
         .trim();
-
 }
 
 
@@ -3353,12 +3346,11 @@ function copyText(text) {
 
         }
     );
-
 }
 
 
 // ======================================================
-// COPY BUTTON FEEDBACK
+// COPY BUTTON
 // ======================================================
 
 function flashCopyButton(text) {
@@ -3380,7 +3372,6 @@ function flashCopyButton(text) {
         },
         1800
     );
-
 }
 
 
@@ -3414,10 +3405,6 @@ function loadDashboard(options) {
     els.error.style.display =
         'none';
 
-
-    /*
-     * Beim Auto-Refresh bleibt das Dashboard sichtbar.
-     */
 
     if (
         !options.silent ||
@@ -3551,11 +3538,6 @@ function loadDashboard(options) {
                 'none';
 
 
-            /*
-             * Wenn bereits alte Daten vorhanden sind,
-             * bleiben sie bei einem Auto-Refresh sichtbar.
-             */
-
             if (
                 state.result
             ) {
@@ -3580,7 +3562,6 @@ function loadDashboard(options) {
 
         }
     );
-
 }
 
 
@@ -3644,7 +3625,6 @@ function updateAutoRefreshInfo() {
         });
 
     }
-
 }
 
 
@@ -3737,11 +3717,6 @@ document.querySelectorAll(
                     );
 
 
-                /*
-                 * Nochmal auf dieselbe Kachel:
-                 * Filter ausschalten.
-                 */
-
                 state.filter =
 
                     state.filter ===
@@ -3798,9 +3773,7 @@ els.copyIssuesButton.addEventListener(
             getVisibleIssues();
 
 
-        if (
-            !issues.length
-        ) {
+        if (!issues.length) {
 
             return;
 
