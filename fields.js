@@ -129,11 +129,9 @@ function normalizeListName(name) {
 
 function checkPlausibility() {
 
-    /*
-     * RANG -> POSITION
-     *
-     * NUR diese Ränge werden geprüft.
-     */
+    // ==================================================
+    // RANG -> POSITION
+    // ==================================================
 
     var positionRules = {
 
@@ -184,9 +182,9 @@ function checkPlausibility() {
     };
 
 
-    /*
-     * TRELLO-LISTE -> RANG
-     */
+    // ==================================================
+    // TRELLO-LISTE -> RANG
+    // ==================================================
 
     var listRules = {
 
@@ -218,7 +216,10 @@ function checkPlausibility() {
             'captain',
 
         'major':
-            'major'
+            'major',
+
+        'commander':
+            'commander'
 
     };
 
@@ -252,11 +253,6 @@ function checkPlausibility() {
         );
 
 
-    /*
-     * Kein Rang:
-     * kein Plausibilitätsfehler.
-     */
-
     if (!rank) {
 
         plausibilityWarning.style.display =
@@ -267,10 +263,7 @@ function checkPlausibility() {
     }
 
 
-    /*
-     * Alle anderen/custom Ränge
-     * komplett ignorieren.
-     */
+    // Custom / unbekannte Ränge ignorieren
 
     if (!positionRules[rank]) {
 
@@ -311,18 +304,14 @@ function checkPlausibility() {
 
 
     // ==================================================
-    // 2. TRELLO-LISTE <-> RANG
+    // 2. LISTE <-> RANG
     // ==================================================
-
-    var normalizedList =
-        normalizeListName(
-            currentListName
-        );
-
 
     var expectedRank =
         listRules[
-            normalizedList
+            normalizeListName(
+                currentListName
+            )
         ];
 
 
@@ -339,9 +328,7 @@ function checkPlausibility() {
     }
 
 
-    /*
-     * Alles korrekt.
-     */
+    // Alles korrekt
 
     plausibilityWarning.style.display =
         'none';
@@ -360,21 +347,13 @@ function setControlColor(
     var colors = [
 
         'light-gray',
-
         'red',
-
         'blue',
-
         'green',
-
         'purple',
-
         'orange',
-
         'yellow',
-
         'sky',
-
         'lime'
 
     ];
@@ -453,10 +432,6 @@ function saveData() {
 
     }
 
-
-    /*
-     * Warnung sofort aktualisieren.
-     */
 
     checkPlausibility();
 
@@ -576,11 +551,9 @@ function createSelect(
         );
 
 
-    /*
-     * Falls ein alter gespeicherter Wert
-     * existiert, dessen Option inzwischen
-     * gelöscht wurde.
-     */
+    // ==================================================
+    // GELÖSCHTE / ALTE OPTION
+    // ==================================================
 
     if (
         normalized &&
@@ -889,11 +862,6 @@ t.render(function () {
             {}
         ),
 
-        /*
-         * NEU:
-         * aktuelle Trello-Liste laden.
-         */
-
         t.list(
             'name'
         )
@@ -930,10 +898,6 @@ t.render(function () {
             renderField
         );
 
-
-        /*
-         * Beim Öffnen sofort prüfen.
-         */
 
         checkPlausibility();
 
