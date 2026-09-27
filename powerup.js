@@ -95,7 +95,6 @@ window.TrelloPowerUp.initialize({
                 {}
             ),
 
-            // Aktuelle Trello-Liste der Karte
             t.list(
                 'name'
             )
@@ -124,9 +123,9 @@ window.TrelloPowerUp.initialize({
             var badges = [];
 
 
-            // ==========================================
+            // ==================================================
             // NORMALE CT FIELDS
-            // ==========================================
+            // ==================================================
 
             (schema.fields || []).forEach(
                 function (field) {
@@ -181,9 +180,9 @@ window.TrelloPowerUp.initialize({
             );
 
 
-            // ==========================================
-            // PLAUSIBILITÄTSCHECK
-            // ==========================================
+            // ==================================================
+            // PLAUSIBILITÄT
+            // ==================================================
 
             if (
                 hasPlausibilityError(
@@ -207,6 +206,16 @@ window.TrelloPowerUp.initialize({
 
 
             return badges;
+
+        }).catch(function (error) {
+
+            console.error(
+                'CT Fields Badge Error:',
+                error
+            );
+
+
+            return [];
 
         });
 
@@ -303,12 +312,9 @@ function hasPlausibilityError(
     listName
 ) {
 
-    /*
-     * RANG -> POSITION
-     *
-     * NUR diese Ränge werden geprüft.
-     * Alle anderen werden ignoriert.
-     */
+    // ==================================================
+    // RANG -> POSITION
+    // ==================================================
 
     var positionRules = {
 
@@ -359,9 +365,9 @@ function hasPlausibilityError(
     };
 
 
-    /*
-     * TRELLO-LISTE -> RANG
-     */
+    // ==================================================
+    // TRELLO-LISTE -> RANG
+    // ==================================================
 
     var listRules = {
 
@@ -393,7 +399,10 @@ function hasPlausibilityError(
             'captain',
 
         'major':
-            'major'
+            'major',
+
+        'commander':
+            'commander'
 
     };
 
@@ -413,7 +422,9 @@ function hasPlausibilityError(
 
 
     if (!rankField) {
+
         return false;
+
     }
 
 
@@ -424,23 +435,21 @@ function hasPlausibilityError(
         );
 
 
-    /*
-     * Kein Rang:
-     * wird im Overview als unvollständig behandelt,
-     * aber NICHT als Plausibilitätsfehler.
-     */
+    // Kein Rang = kein Plausibilitätsfehler
 
     if (!rank) {
+
         return false;
+
     }
 
 
-    /*
-     * Alle anderen/custom Ränge ignorieren.
-     */
+    // Andere/custom Ränge nicht prüfen
 
     if (!positionRules[rank]) {
+
         return false;
+
     }
 
 
@@ -470,25 +479,16 @@ function hasPlausibilityError(
 
 
     // ==================================================
-    // 2. TRELLO-LISTE <-> RANG
+    // 2. LISTE <-> RANG
     // ==================================================
-
-    var normalizedList =
-        normalizeListName(
-            listName
-        );
-
 
     var expectedRank =
         listRules[
-            normalizedList
+            normalizeListName(
+                listName
+            )
         ];
 
-
-    /*
-     * Ist keine bekannte Rangliste,
-     * wird die Liste ignoriert.
-     */
 
     if (
         expectedRank &&
@@ -511,7 +511,9 @@ function hasPlausibilityError(
 function formatDate(dateString) {
 
     if (!dateString) {
+
         return '';
+
     }
 
 
