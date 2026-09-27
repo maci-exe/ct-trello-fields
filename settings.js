@@ -802,7 +802,7 @@ function renderField(
     details.open =
         openState[field.id] !== undefined
             ? openState[field.id]
-            : index === 0;
+            : false;
 
 
     details.addEventListener(
